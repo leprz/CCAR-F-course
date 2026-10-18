@@ -9,7 +9,7 @@
 Northwind's AP team wants every incoming document turned into an `InvoiceExtraction` record. The current integration
 asks for "JSON", prefills `{`, and parses the text. On current models the prefill alone returns a 400 error. Even on models that
 accept it, the schema forces values the documents don't contain: a contract has no invoice number, a German invoice has no
-PO, and one invoice states no currency. The model fills those gaps with plausible inventions.
+PO (purchase order number), and one invoice states no currency. The model fills those gaps with plausible inventions.
 
 ## Your task
 

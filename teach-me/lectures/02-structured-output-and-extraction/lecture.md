@@ -37,7 +37,7 @@ document arrives as plain text after OCR, and they are deliberately unalike:
 | id | What it is | What makes it tricky |
 |----|------------|----------------------|
 | `INV-1` | Acme Office Supply invoice | US dates (`03/04/2026` = 4 March), `$1,245.50` |
-| `INV-2` | Müller Industrietechnik *Rechnung* | German dates (`04.03.2026` = 4 March), `1.234,56 €`, no PO number, bank details printed |
+| `INV-2` | Müller Industrietechnik *Rechnung* | German dates (`04.03.2026` = 4 March), `1.234,56 €`, no PO (purchase order number), bank details printed |
 | `INV-3` | Acme credit note | The total is a credit: `-$189.00` |
 | `INV-4` | J. Barker & Sons, handwritten | `£340`, "5th march '26", a margin note in a different pen: *"PAID?? check w/ Tom"* |
 | `INV-5` | Brightline Consulting | `Date: 02/03/2026` (February 3 or March 2?), `Amount due: 1,500.00` with **no currency**, "Please pay within 15 days" |

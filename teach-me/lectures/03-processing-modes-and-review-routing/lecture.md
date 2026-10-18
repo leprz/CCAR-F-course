@@ -33,7 +33,7 @@ with reasons, and that you can measure.
 
 We stay with **Northwind Traders' accounts-payable inbox** from Part 2 (`fixtures/invoices/`). After OCR, every
 incoming document is plain text, and the extractor turns it into the `InvoiceExtraction` record: `document_type`,
-`vendor_name`, `invoice_number`, `po_number`, `issue_date`, `due_date`, `currency`, `total_amount`, `line_items`,
+`vendor_name`, `invoice_number`, `po_number` (purchase order number), `issue_date`, `due_date`, `currency`, `total_amount`, `line_items`,
 `payment_terms` and `ambiguous_fields`. Every field is required but nullable, so "not in the document" is an explicit
 `null`.
 
