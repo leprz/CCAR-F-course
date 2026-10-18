@@ -50,10 +50,17 @@ Four tickets have just arrived:
 - **T-102** from Chen: *"I've requested a password reset 3 times and no email arrives. Not urgent, just annoying."*
 - **T-103** from `unknown.person@example.com`: *"I want a refund for my order."*
 
-Our job is to **triage** each ticket: decide its category (`billing`, `shipping`, `refund`, `account`, `technical`,
-`other`), its priority (`low`, `normal`, `high`, `urgent`), write a one-sentence summary, and say whether a human must
-step in. The helpdesk software that receives the result is strict: it reads a JSON record with exactly those four
-fields and valid enum values, and it crashes on anything else.
+Our job is to **triage** each ticket, which means filling in a record with four fields:
+
+| Field | Meaning | Allowed values |
+|-------|---------|----------------|
+| `category` | What the ticket is about | `billing`, `shipping`, `refund`, `account`, `technical`, `other` |
+| `priority` | How fast someone must react | `low`, `normal`, `high`, `urgent` (`urgent` = money lost or account locked) |
+| `summary` | One sentence a support agent can act on | any text |
+| `needs_human` | Whether a person must step in | `true` / `false` |
+
+The helpdesk software that receives the record is strict: it reads JSON with exactly those four fields and only the
+allowed values, and it crashes on anything else.
 
 To investigate, Claude gets two backend functions, `lookup_customer(email)` and `list_orders(customer_id)`. Notice
 already that the second one needs an id that only the first one can produce. That dependency will matter in section 5.
@@ -150,8 +157,21 @@ and sends the second request. Its `messages` array now has **three** entries:
 ]
 ```
 
-Claude now has what it needs and records the triage (`account`, `low`, "Password reset emails are not arriving",
-`needs_human: true`). How it records it so the helpdesk can read it is section 4's job.
+Claude now has what it needs, and on the next turn it produces the triage record, the four fields the helpdesk expects
+(see *The running example*):
+
+```json
+{
+  "category": "account",
+  "priority": "low",
+  "summary": "Password reset emails are not arriving after three requests.",
+  "needs_human": true
+}
+```
+
+Where does this object come from? Not from prose that your code parses. Claude passes it as the `input` of a
+`record_triage` tool call. Section 3 shows that tool's schema (which is where the allowed values are enforced), and
+section 4 shows how to make sure Claude calls it.
 
 In TypeScript, the skeleton of the loop is short:
 
@@ -273,7 +293,7 @@ Our `runToolCalls` catches it and turns it into a result instead of letting it c
 }
 ```
 
-On the next turn Claude doesn't invent `cus_004`. It records a `refund` ticket with `needs_human: true`, which is
+On the next turn Claude doesn't invent `cus_004`. It records `category: "refund"` with `needs_human: true`, which is
 exactly what the error told it to do. The error message did the job a prompt engineer would otherwise have to do in
 the system prompt, and it does it at the moment it's relevant.
 
