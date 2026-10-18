@@ -1,0 +1,145 @@
+{
+  "lectureSlug": "01-agentic-loop-and-tool-use",
+  "title": "Part 1 — Agentic loop and tool use",
+  "generatedAt": "2026-10-18T09:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O01"],
+      "prompt": "A support agent answers \"What's the status of orders A1, A2 and A3?\" Logs show three API round trips, each with a single `get_order` call. The request contains:\n\n```json\n\"tool_choice\": { \"type\": \"auto\", \"disable_parallel_tool_use\": true }\n```\n\nWhat is the most effective change to cut latency?",
+      "options": [
+        "Remove `disable_parallel_tool_use` (or set it to false) so Claude can emit all three `get_order` calls in one turn, and execute them concurrently.",
+        "Switch to `tool_choice: {type: \"any\"}` so Claude must call a tool every turn.",
+        "Add a `get_orders` tool that accepts a list, and keep `disable_parallel_tool_use: true`.",
+        "Raise `max_tokens` so Claude has room to describe all three orders in one response."
+      ],
+      "correctIndex": 0,
+      "explanation": "With `auto`, `disable_parallel_tool_use: true` limits Claude to at most one tool call per turn, which forces one round trip per order. Removing it restores the default parallel behaviour, and running the calls concurrently gives the latency win. `any` still allows only one call per turn with the flag set. A batch tool can work but is a redesign, not the fix for this misconfiguration. `max_tokens` is unrelated."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O01"],
+      "prompt": "After a refactor of the tool loop, an agent that used to batch independent file reads now reads files one per turn. Prompts and `tool_choice` are unchanged. Which refactor change most likely caused this?",
+      "options": [
+        "Tool results are now sent back as one user message per `tool_result` instead of a single user message with all results.",
+        "Tool results are now serialized with `JSON.stringify` instead of plain strings.",
+        "The loop now appends the assistant turn before the tool results.",
+        "The loop now checks `stop_reason === \"tool_use\"` instead of looking for `tool_use` blocks."
+      ],
+      "correctIndex": 0,
+      "explanation": "The parallel tool use docs list splitting results across separate user messages as the most common formatting error: the history teaches Claude to stop making parallel calls. Appending the assistant turn first is required, JSON string content is fine, and checking `stop_reason` is standard."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": ["O01"],
+      "prompt": "`disable_parallel_tool_use` is a top-level request parameter, set alongside `tools` and `max_tokens`.",
+      "correct": false,
+      "explanation": "It is a field **inside** the `tool_choice` object, for example `{type: \"auto\", disable_parallel_tool_use: true}`. With `auto` it means at most one tool; with `any` or `tool` it means exactly one."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O27"],
+      "prompt": "An invoice pipeline asks Claude to \"reply only with JSON\" and calls `JSON.parse` on the text. About 3% of responses start with a sentence such as \"Here is the data:\" and crash the parser. On a model that supports forced tool use, what is the most reliable fix?",
+      "options": [
+        "Define a tool whose `input_schema` is the invoice shape and set `tool_choice: {type: \"tool\", name: \"record_invoice\"}`, then read `tool_use.input`.",
+        "Add \"Do NOT include any text other than JSON\" in capitals to the system prompt.",
+        "Strip everything before the first `{` before calling `JSON.parse`.",
+        "Retry the request until `JSON.parse` succeeds."
+      ],
+      "correctIndex": 0,
+      "explanation": "A forced tool call returns structured `input` that is already parsed and shaped by the schema, and the API prefills the turn so no preamble text is emitted. Prompt wording, string stripping and retries only reduce the failure rate; they don't guarantee anything."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O27", "O37"],
+      "prompt": "A team sets `tool_choice: {type: \"tool\", name: \"record_triage\"}` on every request in a multi-turn agent that also has `lookup_customer` and `list_orders` tools. Triage records come back with invented customer details. Why?",
+      "options": [
+        "Forcing `record_triage` on every turn means Claude can never call the investigation tools, so it fills the record without data. Force it only on the final step and use `auto` (or force the prerequisite) earlier.",
+        "`tool_choice: tool` is not allowed together with more than one tool.",
+        "`record_triage` needs `strict: true`, otherwise the forced call ignores the other tools.",
+        "Forced tool use disables `tool_result` blocks, so the investigation results are dropped."
+      ],
+      "correctIndex": 0,
+      "explanation": "Forcing a specific tool means that tool is the only one Claude can call that turn. Over-forcing removes the investigation step. Force at contract points only: the first prerequisite, and the final structured output."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O37"],
+      "prompt": "`get_invoice_lines(account_id)` must only run after `find_account(email)` has returned the account id. Claude sometimes calls `get_invoice_lines` first with a guessed id. Which combination makes the order most reliable?",
+      "options": [
+        "State the prerequisite in `get_invoice_lines`' description, force `find_account` on the first turn with `tool_choice`, and return an instructive `is_error` result if an unknown id is passed.",
+        "Remove `find_account` and let `get_invoice_lines` accept an email.",
+        "Set `disable_parallel_tool_use: true` on every turn.",
+        "Use `tool_choice: {type: \"any\"}` so Claude has to pick a tool each turn."
+      ],
+      "correctIndex": 0,
+      "explanation": "Descriptions guide, forcing the first step guarantees it, and instructive errors let Claude recover if it still goes wrong. Disabling parallel calls doesn't fix ordering across turns, `any` doesn't choose which tool, and redesigning the API dodges the objective."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "recall",
+      "objectives": ["O27"],
+      "prompt": "With `tool_choice: {type: \"any\"}`, you ask Claude to \"explain your reasoning before calling the tool\". What happens?",
+      "options": [
+        "No explanation appears: with `any` or `tool`, the API prefills the assistant turn, so the response starts with the `tool_use` block.",
+        "Claude writes a short text block and then calls the tool.",
+        "The request fails with a 400 error because text and forced tools are incompatible.",
+        "Claude ignores `tool_choice` and answers in text."
+      ],
+      "correctIndex": 0,
+      "explanation": "Forced tool choice prefills the turn, so no natural-language text comes before the `tool_use`. If you want commentary, use `auto` and instruct Claude to use the tool."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O01"],
+      "prompt": "Claude emits three `tool_use` blocks in one turn. The second one fails. Your code runs them concurrently. What should the next user message contain?",
+      "options": [
+        "Three `tool_result` blocks in one user message, matched by `tool_use_id`, with the failed one marked `is_error: true` and an explanation.",
+        "Two `tool_result` blocks for the successful calls. The failed call is omitted so Claude retries it.",
+        "A text block summarising the failure, followed by the two successful `tool_result` blocks.",
+        "Three separate user messages, one per result, so the error is isolated."
+      ],
+      "correctIndex": 0,
+      "explanation": "Every `tool_use` needs a matching `tool_result` in the next user message. Results come first and all together, and errors are reported with `is_error: true`. Text before results returns a 400, and omitting a result also fails."
+    },
+    {
+      "id": "q9",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": ["O27"],
+      "prompt": "On current models such as Claude Opus 5.5 and Sonnet 5.5, `tool_choice: {type: \"tool\", name: \"x\"}` returns a 400 error; the recommended alternative is `auto` with `strict: true` tools or structured outputs.",
+      "correct": true,
+      "explanation": "The define-tools docs list Opus 5.5, Sonnet 5.5, Fable 5.1 and Mythos 5.1 as rejecting `any` and `tool`. Models such as Haiku 5.5 and Opus 5 still accept forced tool use. Manual extended thinking also rejects forced tool use."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O01", "O37"],
+      "prompt": "A coding agent batches `write_file(config.json)` and `run_tests()` in the same parallel turn, and tests sometimes run against the old config. What is the best fix?",
+      "options": [
+        "Add \"Only batch tool calls that are independent of each other\" to the system prompt, and run side-effecting or ordered calls sequentially, returning `is_error` for any call you skip after a failure.",
+        "Disable parallel tool use for the whole agent.",
+        "Increase `max_tokens` so Claude plans better.",
+        "Always run tool calls in reverse order."
+      ],
+      "correctIndex": 0,
+      "explanation": "Parallel calls are meant for independent operations. Prompting keeps dependent calls out of one batch, and your executor decides the order: sequential for side effects. Disabling parallelism everywhere throws away the latency benefit for the independent reads."
+    }
+  ]
+}

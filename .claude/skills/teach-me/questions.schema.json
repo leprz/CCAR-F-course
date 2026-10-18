@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://teach-me.local/questions.schema.json",
+  "title": "teach-me quiz questions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["lectureSlug", "title", "generatedAt", "questions"],
+  "properties": {
+    "lectureSlug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Matches the lecture folder name: a lowercase hyphenated slug. The date prefix is optional: <YYYY-MM-DD>-<topic-slug> or <NN>-<topic-slug> (e.g. 01-agentic-loop-and-tool-use)"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/question" }
+    }
+  },
+  "definitions": {
+    "difficulty": {
+      "type": "string",
+      "enum": ["recall", "apply", "analyze"]
+    },
+    "question": {
+      "type": "object",
+      "required": ["id", "type", "prompt", "difficulty"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^q[0-9]+$" },
+        "type": {
+          "type": "string",
+          "enum": ["multiple-choice", "true-false"]
+        },
+        "prompt": { "type": "string", "minLength": 1 },
+        "difficulty": { "$ref": "#/definitions/difficulty" },
+        "explanation": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "correctIndex": { "type": "integer", "minimum": 0 },
+        "correct": { "type": "boolean" },
+        "objectives": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^O[0-9]{2}$" },
+          "description": "Optional exam objective IDs this question tests, e.g. [\"O27\", \"O37\"]"
+        }
+      },
+      "oneOf": [
+        {
+          "title": "multiple-choice",
+          "properties": { "type": { "const": "multiple-choice" } },
+          "required": ["options", "correctIndex", "explanation"],
+          "not": { "required": ["correct"] },
+          "allOf": [
+            {
+              "properties": {
+                "options": { "minItems": 4, "maxItems": 4 },
+                "correctIndex": { "maximum": 3 }
+              }
+            }
+          ]
+        },
+        {
+          "title": "true-false",
+          "properties": { "type": { "const": "true-false" } },
+          "required": ["correct", "explanation"],
+          "not": { "required": ["options", "correctIndex"] }
+        }
+      ]
+    }
+  }
+}

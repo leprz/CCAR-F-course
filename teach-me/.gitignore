@@ -1,0 +1,4 @@
+# teach-me: only the local server's runtime files are ignored. Site assets,
+# library.json and lectures/*/{lecture.md,questions.json} are committed.
+.server.pid
+.server.port

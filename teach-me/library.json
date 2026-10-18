@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-10-18T05:11:03Z",
+  "lectures": [
+    {
+      "slug": "01-agentic-loop-and-tool-use",
+      "title": "Part 1 — Agentic loop and tool use",
+      "topic": "Claude API tool use, tool_choice and parallel tool calls",
+      "date": "2026-10-18",
+      "depth": "deep",
+      "questionCount": 10,
+      "tags": [
+        "cca-f",
+        "part-1",
+        "tool-use",
+        "tool_choice",
+        "parallel-tool-calls",
+        "O01",
+        "O27",
+        "O37"
+      ],
+      "objectives": [
+        "O01",
+        "O27",
+        "O37"
+      ],
+      "notesPath": "lectures/01-agentic-loop-and-tool-use/lecture.md",
+      "quizUrl": "quiz.html?lecture=01-agentic-loop-and-tool-use"
+    }
+  ]
+}

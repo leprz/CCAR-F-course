@@ -1,0 +1,29 @@
+{
+  "name": "claude-ccar-f-practice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Study repo for the Claude Certified Architect – Foundations exam: topic docs, TypeScript lessons, quizzes.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:solution": "SOLUTION=1 vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "typecheck": "tsc --noEmit",
+    "coverage": "tsx scripts/coverage.ts",
+    "gate": "tsx scripts/gate.ts"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.302",
+    "@anthropic-ai/sdk": "0.135.0",
+    "dotenv": "18.0.8"
+  }
+}
