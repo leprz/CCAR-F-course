@@ -45,7 +45,7 @@ def check(path):
     for key in ("title", "topic", "date", "depth", "tags"):
         if key not in fm:
             errors.append(f"front-matter lacks `{key}`")
-    depth = fm.get("depth", "chapter").strip()
+    depth = fm.get("depth", "chapter").strip().strip("'\"")
     if depth not in WORD_BANDS:
         errors.append(f"depth `{depth}` is not one of {', '.join(WORD_BANDS)}")
 
