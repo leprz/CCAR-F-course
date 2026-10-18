@@ -60,8 +60,11 @@ chapter length sized to the subject (~4–6k words for a broad part, shorter for
 whole chapter, book structure (opening → running example → numbered concept sections, each with problem/idea/worked example/
 what goes wrong/Check yourself → putting it together → summary → traps table → going deeper). The skill's `lecture-template.md`
 and SKILL.md §4 were rewritten (`depth: chapter|deep|brief`, new `--brief` flag). **Part 1 is rewritten**; the quiz was kept
-(its facts are unchanged). **Next: user reviews Part 1; if approved, rewrite Parts 2, 4, 5, 7 the same way** (and update
-the lesson READMEs' "Read first" section names, as was done for L01/L02).
+(its facts are unchanged). Parts 2–8 were written in chapter format in commit 917d904.
+**2026-10-18 follow-up:** added `scripts/check-lecture.py` (chapter-contract linter; all 8 lectures pass with no ERROR
+or WARN), a `--rewrite <slug>` mode (SKILL.md §9b), a reference-chapter rule (Part 1), and a rule to take example
+output from running the real code. Part 3 §5 now shows the router's real INV-2 decision, which includes `high_value`
+as well as `sum_mismatch`; the earlier table had missed `high_value`. All "Read first" links in the lesson READMEs match lecture headings.
 
 Earlier: none requested. The user solved L02 directly. The one stumble was leaving the old sequential loop in place next to the new concurrent code, which the tests caught.
 

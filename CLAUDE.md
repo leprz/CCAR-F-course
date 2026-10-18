@@ -51,6 +51,8 @@ or run `bash .claude/skills/teach-me/scripts/serve.sh teach-me` and open `index.
 
 - One lecture per part: `teach-me/lectures/NN-topic/lecture.md` (teach-me template: a book chapter with front-matter,
   one running example, numbered concept sections with "Check yourself" questions, summary, traps, going deeper) and `questions.json`.
+- Lint a lecture with `python3 .claude/skills/teach-me/scripts/check-lecture.py teach-me/lectures/*/lecture.md` (must report no
+  ERROR). To upgrade an old lecture, use `/teach-me --rewrite <slug>`.
 - Every question carries `objectives: ["Oxx"]`. Validate with `python3 .claude/skills/teach-me/scripts/validate-quiz.py <file>`,
   then rebuild the index with `python3 .claude/skills/teach-me/scripts/build-library.py teach-me`.
 - Write questions as exam-style scenarios with plausible distractors, and explain why each wrong option is wrong.

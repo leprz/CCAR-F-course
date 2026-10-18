@@ -394,7 +394,7 @@ Here's what the L08 router decides for the seven records:
 | Doc | Issues found | Route | Fields to check | Actually wrong? |
 |-----|-------------|-------|-----------------|-----------------|
 | INV-1 | — | auto-approve | — | no |
-| INV-2 | `sum_mismatch` (lines sum to 1234.56, total is 123456) | **review, high** | `total_amount` | **yes** |
+| INV-2 | `sum_mismatch` (lines sum to 1234.56, total is 123456), `high_value` (≥ 10,000) | **review, high** | `total_amount` | **yes** |
 | INV-3 | `risky_document` (credit note) | review | — | no |
 | INV-4 | `low_confidence` on `issue_date` (0.55), `risky_document` (handwritten) | review | `issue_date` | **yes** |
 | INV-5 | `ambiguous` + `missing_required` + `low_confidence` on `issue_date` and `currency` | review | `issue_date`, `currency` | no |
@@ -485,8 +485,26 @@ most issues.
 Look again at the three records the router flagged.
 
 INV-2's extraction looks perfect to the confidence signal (every field ≥ 0.95). Validation computes `1234.56` from the
-line items, compares it with the total of `123456`, and raises `sum_mismatch` on `total_amount`. That's high priority,
-with a single field to check. The reviewer opens the document, sees "1.234,56 €", and fixes it in seconds.
+line items, compares it with the total of `123456`, and raises `sum_mismatch` on `total_amount`. Independently, the
+misread total is above the 10,000 value threshold, so the document characteristics raise `high_value` on the same
+field. This is the router's actual decision for INV-2:
+
+```json
+{
+  "docId": "INV-2",
+  "route": "human_review",
+  "priority": "high",
+  "issues": [
+    { "field": "total_amount", "code": "sum_mismatch", "detail": "line items sum to 1234.56, total is 123456" },
+    { "field": "total_amount", "code": "high_value", "detail": "|total| ≥ 10000" }
+  ],
+  "fieldsToCheck": ["total_amount"]
+}
+```
+
+Notice what's absent: no `low_confidence` issue, because the model was sure. Notice too that `fieldsToCheck` is a
+single field, even though two signals fired. The reviewer opens the document, sees "1.234,56 €", and fixes it in
+seconds.
 
 INV-4's validation passes: the line items add up and the dates are in order. But the model's confidence on `issue_date`
 is 0.55, and the document carries the `handwritten` trait. Two independent signals point at the same document, and

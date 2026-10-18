@@ -2,7 +2,7 @@
 name: teach-me
 description: Turn any topic — or the thing Claude just recommended — into a saved markdown lecture plus an interactive quiz served from a local web portal. USE WHEN the user wants to learn/understand a concept more deeply, says "teach me X", triggers learning about a recommendation just made, points at a file to learn about it, or wants to review/retake a past lecture. In this repo (CCA-F exam prep) it also runs the objective-tagged quizzes, the mock exam page, and progress export.
 user-invocable: true
-argument-hint: '[topic | @file | @slug] [--deep|--brief] [--here|--global] [--list] [--open <slug>] [--requiz <slug>] [--notes-only] [--stop]'
+argument-hint: '[topic | @file | @slug] [--deep|--brief] [--here|--global] [--list] [--open <slug>] [--requiz <slug>] [--rewrite <slug>] [--notes-only] [--stop]'
 allowed-tools:
   - Bash
   - Read
@@ -40,12 +40,13 @@ HTTP server. In this repo everything in the root is committed except
 
 ### Helper scripts
 
-`$SKILL/scripts/` holds five deterministic helpers — prefer them over doing the
+`$SKILL/scripts/` holds six deterministic helpers — prefer them over doing the
 mechanics by hand. They find `$SKILL` from their own location, so just call them:
 
 | Script | Does | Used by |
 | --- | --- | --- |
 | `prepare-root.sh <root> [slug]` | make dirs, version-sync assets, write `.gitignore` (ignores only `.server.pid`/`.server.port`) | §3 |
+| `check-lecture.py <lecture.md>…` | lint a lecture against the book-chapter contract (structure, Check yourself answers, length band, cheat-sheet relapse) | §4, §9b |
 | `validate-quiz.py <questions.json>` | validate a quiz against the schema (jsonschema, structural fallback) | §5 |
 | `build-library.py <root>` | rebuild `<root>/library.json` from all lectures | §5b, §8 |
 | `serve.sh <root>` | start/reuse the background server, print the port | §6 |
@@ -57,11 +58,12 @@ mechanics by hand. They find `$SKILL` from their own location, so just call them
 
 From `$ARGUMENTS`, detect (in this order):
 
-- `--stop` → go to **§9 Stop** and do nothing else.
+- `--stop` → go to **§10 Stop** and do nothing else.
 - `--list` → go to **§8 List**.
 - `--open <slug>` or a bare leading-`@` token that did **not** expand to file
   contents (e.g. `@infer-in-typescript`) → go to **§7 Reopen** with that slug.
-- `--requiz <slug>` → go to **§6 Requiz**.
+- `--requiz <slug>` → go to **§9 Requiz**.
+- `--rewrite <slug>` → go to **§9b Rewrite** (upgrade an existing lecture in place).
 - Otherwise this is a **create** (§2–§5). Note these create-flags:
   - `--deep` → textbook depth; `--brief` → short refresher; else a full chapter
     sized to the subject (§4).
@@ -156,6 +158,29 @@ highlighted, not turned into a diagram.
 **Language.** If the user asked for the lecture in a specific language (e.g.
 "teach me X in Polish", or a non-English topic clearly signalling the desired
 language), write the **entire** lecture in that language — including the section headings. Default to English when no language is requested. Write the quiz in the same language as the lecture.
+
+**Reference chapter.** In this repo,
+`teach-me/lectures/01-agentic-loop-and-tool-use/lecture.md` is the model the user
+approved. Read it before writing a new chapter and match its voice and rhythm.
+
+**Ground the examples in real code.** When the running example comes from repo
+code or fixtures, take payloads, ids and outputs from that code, and run it
+(`npx tsx` on a scratch script) when you show what it returns. Don't write
+plausible-looking output by hand: a lecture that disagrees with the lesson's
+solution teaches the wrong thing.
+
+**Check before saving.** Run
+
+```bash
+python3 $SKILL/scripts/check-lecture.py <root>/lectures/<slug>/lecture.md
+```
+
+Fix every `ERROR`. Treat each `WARN` as a prompt to look again, not a rule
+(a worked example can be a table, for instance). Then reread the chapter as the
+learner and check what the linter can't: every term defined before use, each
+section opening with a problem rather than a definition, no paragraph that is
+really a bullet list in disguise, and every fact backed by a source under
+*Going deeper*.
 
 If `--notes-only`: skip to **§5b** (manifest without quiz), then report the saved
 path and stop (no quiz, no server).
@@ -254,6 +279,29 @@ Locate the lecture (§7). Re-run **§5** (regenerate `questions.json`
 from the existing `lecture.md`) and **§5b**, then serve and open its
 `quiz.html?lecture=<slug>` (§6) — requiz is about the quiz, so it opens the quiz
 directly. Do not touch `lecture.md`.
+
+## 9b. Rewrite (`--rewrite <slug>`)
+
+Upgrades an existing lecture to the current template without changing its slug,
+so links, quiz scores and `COVERAGE.md` rows keep working. This is the one case
+where a lecture is overwritten (§2), and it happens only when the user asks.
+
+1. Locate the lecture (§7). Read it, its `questions.json`, the template, and the
+   reference chapter (§4).
+2. Re-check the facts against the current docs listed under *Going deeper*
+   (this repo's content rules), and rewrite `lecture.md` per §4, keeping the
+   same objectives and topic coverage. Run `check-lecture.py`.
+3. Keep `questions.json` if its facts still hold. If the rewrite changed a fact,
+   or the quiz tests something the lecture no longer teaches, regenerate it
+   (§5). Validate it either way.
+4. Find everything that points into the lecture by section name (in this repo,
+   `grep -rn "<slug>" lessons/*/README.md`, i.e. the "Read first" lines) and
+   update the section names.
+5. Rebuild the library (§5b) and open the notes page (§6).
+
+To rewrite several lectures, give each one to its own subagent with these steps,
+the template and the reference chapter, then run `check-lecture.py` on all of
+them yourself before reporting.
 
 ## 10. Stop (`--stop`)
 
