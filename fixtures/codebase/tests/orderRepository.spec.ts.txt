@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest';
+import type { Db } from '../src/db.ts';
+import { OrderRepository, type Order, type OrderLine } from '../src/repositories/orderRepository.ts';
+
+export function makeLine(overrides: Partial<OrderLine> = {}): OrderLine {
+  return { sku: 'SKU-1', quantity: 1, unitPriceCents: 1000, ...overrides };
+}
+
+export function makeOrder(overrides: Partial<Order> = {}): Order {
+  return { id: 'ord_1', customerId: 'cus_1', status: 'open', discountCents: 0, lines: [makeLine()], ...overrides };
+}
+
+function fakeDb(rows: Record<string, unknown>[]): Db & { calls: { sql: string; params?: unknown[] }[] } {
+  const calls: { sql: string; params?: unknown[] }[] = [];
+  return {
+    calls,
+    async query<T>(sql: string, params?: unknown[]) {
+      calls.push({ sql, params });
+      return rows as T[];
+    },
+  };
+}
+
+describe('findById', () => {
+  it('maps a row to a domain order', async () => {
+    const order = makeOrder();
+    const db = fakeDb([{ id: order.id, customer_id: order.customerId, status: 'open', discount_cents: 0, lines_json: JSON.stringify(order.lines) }]);
+    await expect(new OrderRepository(db).findById('ord_1')).resolves.toEqual(order);
+  });
+
+  it('returns null when the order does not exist', async () => {
+    await expect(new OrderRepository(fakeDb([])).findById('missing')).resolves.toBeNull();
+  });
+});

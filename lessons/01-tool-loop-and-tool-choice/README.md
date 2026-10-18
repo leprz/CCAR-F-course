@@ -2,7 +2,7 @@
 
 **Objectives:** O27 (tool use + JSON schema, `tool_choice` to guarantee invocation), O37 (`tool_choice` + sequencing dependent tools)
 **Scenario:** support desk (`fixtures/support/`)
-**Read first:** [Part 1 lecture](../../teach-me/lectures/01-agentic-loop-and-tool-use/lecture.md), sections *The agentic loop*, *Forcing tools with tool_choice* and *Sequencing dependent tools*
+**Read first:** [Part 1 lecture](../../teach-me/lectures/01-agentic-loop-and-tool-use/lecture.md), sections 1–5 (*What is an agentic loop?* through *Tools that depend on each other*)
 
 ## Situation
 

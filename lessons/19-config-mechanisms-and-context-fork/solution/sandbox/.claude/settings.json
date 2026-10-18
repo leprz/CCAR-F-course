@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": ["Bash(npm test *)", "Bash(npm run typecheck)"],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Edit(./migrations/**)",
+      "Write(./migrations/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | xargs npx prettier --write",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

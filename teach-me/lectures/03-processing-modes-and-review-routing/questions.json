@@ -1,0 +1,200 @@
+{
+  "lectureSlug": "03-processing-modes-and-review-routing",
+  "title": "Part 3 — Processing modes and review routing",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O23"
+      ],
+      "prompt": "A pre-merge CI job asks Claude to review every changed file in a pull request (often 200–400 files). The merge is blocked until the review finishes. A teammate suggests the Message Batches API to cut the cost in half. What do you recommend?",
+      "options": [
+        "Use the Message Batches API, because hundreds of requests is exactly the volume batches are designed for.",
+        "Use the Messages API, because the merge is blocked on the result and a batch only guarantees completion within 24 hours.",
+        "Use the Message Batches API with a 30-minute polling timeout, and fail the CI job whenever the batch hasn't finished by then.",
+        "Use the Messages API for the first 100 files and send the remaining files as a batch to save on cost."
+      ],
+      "correctIndex": 1,
+      "explanation": "The deciding factor is that something is **blocked** on the result, not the volume. A batch usually finishes within an hour but only guarantees 24 hours, which is unacceptable for a merge gate. A timeout that fails the job turns slow batches into failed CI runs. Splitting the work still leaves the merge waiting on the batched part."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O23"
+      ],
+      "prompt": "Finance needs 600 vendor contracts summarised by Friday; it is Monday. Nothing downstream waits on individual summaries, and the summaries need no tools. Which processing mode fits best?",
+      "options": [
+        "The Messages API, since 600 requests is too few to justify the extra complexity of a batch.",
+        "The Messages API with streaming enabled, so partial summaries can be shown to finance as they arrive.",
+        "The Message Batches API, since nothing blocks, the deadline is well beyond 24 hours and no tools are needed.",
+        "The Message Batches API, but only after first splitting the 600 contracts into six separate batches of 100 contracts each."
+      ],
+      "correctIndex": 2,
+      "explanation": "Non-blocking work with an acceptable wait of at least 24 hours and no client-tool loop is the batch case, whatever the volume, and it costs 50% less. There is no minimum batch size, and a single batch holds up to 100,000 requests, so splitting is unnecessary. Streaming isn't available in batches and isn't needed here."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O23"
+      ],
+      "prompt": "A nightly job triages 2,000 tickets. For each ticket the model must call your internal `lookup_account` tool (a client tool) before deciding. The team wants to move the job to the Message Batches API. What is the main problem, and the best fix?",
+      "options": [
+        "Each client-tool round trip needs a new request, so another batch of up to 24h; pre-fetch the account data so each request is self-contained.",
+        "Batches don't support the `tools` parameter at all, so the triage has to stay on the Messages API as a synchronous loop over all 2,000 tickets.",
+        "Client tools in a batch run automatically on Anthropic's servers, so the internal `lookup_account` endpoint must first be exposed to the public internet.",
+        "Batches cap each request at one assistant turn, so set `max_tokens` high enough for the model to reason about the account without needing the tool."
+      ],
+      "correctIndex": 0,
+      "explanation": "Tool use is supported in batches, but a batch request is one Messages call. When the model stops with `tool_use`, your result can only go back in a *new* request: another batch with its own wait of up to 24 hours. Doing the lookups in your own code first makes each request self-contained and batchable. Server tools (web search and similar) are different: they do run inside the batch."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O23"
+      ],
+      "prompt": "Your code collects batch results into an array and pairs `results[i]` with `requests[i]`. Some invoices end up with another invoice's totals. What is the cause?",
+      "options": [
+        "The batch was still `in_progress`, so some of the results were placeholders.",
+        "Batch results aren't guaranteed to be in request order; match by `custom_id`.",
+        "Two requests had identical `params`, so their results were merged into one.",
+        "Prompt caching in the batch reused one document's output for another."
+      ],
+      "correctIndex": 1,
+      "explanation": "The results `.jsonl` file is not guaranteed to follow request order. `custom_id` (unique, `^[a-zA-Z0-9_-]{1,64}$`) is the only reliable link between a result and its input. Results can only be read after the batch has ended, and caching never swaps outputs between requests."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O23"
+      ],
+      "prompt": "A batch of 5,000 requests ends with 4,930 `succeeded`, 50 `expired` and 20 `errored` with `invalid_request_error`. What should the pipeline do next?",
+      "options": [
+        "Resubmit all 5,000 requests in a new batch so that the output is internally consistent.",
+        "Resubmit all 70 failed requests in a new batch, keeping their original `custom_id`s.",
+        "Ignore the 70 failures, since a 98.6% success rate is within normal batch tolerances.",
+        "Resubmit the 50 expired requests, and fix the 20 invalid requests before retrying them."
+      ],
+      "correctIndex": 3,
+      "explanation": "Expired requests never reached the model and weren't billed, so they're safe to resubmit. An `invalid_request_error` will fail identically, so those params need fixing first. Resubmitting everything pays twice for 4,930 successes, and silently dropping failures loses data."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O23"
+      ],
+      "prompt": "While a batch is `in_progress`, `request_counts.succeeded` increases as individual requests finish, so you can start reading those results early.",
+      "correct": false,
+      "explanation": "Requests show as `processing` until the whole batch ends. The `succeeded`, `errored`, `canceled` and `expired` counters stay at 0 until then, and results are available only after processing ends (or the 24-hour expiry)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O22"
+      ],
+      "prompt": "An insurer reviews a random 15% of AI-extracted claim forms. Audits show most extraction errors come from faxed forms, which are 10% of volume. What should change?",
+      "options": [
+        "Raise the random review rate to 30% so that more of the faxed forms are covered by the sample.",
+        "Route every faxed form to review, and add field-level confidence and validation checks for the rest.",
+        "Fine-tune the extraction prompt on faxed forms and keep the random 15% review sample unchanged.",
+        "Review only the forms whose overall model confidence score is below 0.5, whatever their source channel."
+      ],
+      "correctIndex": 1,
+      "explanation": "Route by risk, not at random. Document characteristics (faxed) are a strong routing signal, and field-level confidence and validation cover the rest. A bigger random sample still mostly reviews clean documents. Prompt work is worthwhile but doesn't fix the routing. A single low overall-confidence threshold misses confident errors and isn't field-level."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O22"
+      ],
+      "prompt": "An invoice extraction reports 0.95 confidence on every field, but its `total_amount` is 123456 while the line items sum to 1234.56. The router auto-approves anything with all fields ≥ 0.85. What does this show?",
+      "options": [
+        "The confidence threshold is too low and should be raised to 0.98 for monetary fields such as the invoice total.",
+        "The line items are probably wrong, because the model's confidence was higher than any check could be.",
+        "Self-reported confidence isn't calibrated; deterministic checks like line-sum validation must also route.",
+        "The extraction is fine; summing line items is the payment system's job, not the review router's job."
+      ],
+      "correctIndex": 2,
+      "explanation": "Confident mistakes are exactly what confidence-only routing misses. A deterministic validation (line items vs total) catches the decimal misread regardless of what the model claims. Raising the threshold would route this item only by accident, and leaving the check to the payment system means paying the wrong amount."
+    },
+    {
+      "id": "q9",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O22"
+      ],
+      "prompt": "The extraction schema lets the model return `null` and list a field in `ambiguous_fields` when a date like \"02/03\" could be February or March. What should the pipeline do with such an extraction?",
+      "options": [
+        "Retry the extraction with an instruction to pick the most likely reading for the date field.",
+        "Default the date to the US reading, since most of the company's vendors are based in the US.",
+        "Auto-approve the extraction, because the model correctly declined to guess the ambiguous date.",
+        "Route it to a reviewer with the ambiguous field named as the one specific field to check."
+      ],
+      "correctIndex": 3,
+      "explanation": "Ambiguity flags are one of the most precise routing signals: the model points at the exact field. A person must make the decision. Retrying or defaulting pushes towards fabrication, and auto-approving leaves a required payment field empty."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O22"
+      ],
+      "prompt": "A team routes extractions by validation failures, low field confidence, ambiguity flags and document traits. They want to estimate how many wrong extractions the router lets through in production, where there's no ground truth. What should they do?",
+      "options": [
+        "Have reviewers re-check a small random sample drawn only from the auto-approved extractions.",
+        "Re-check a small random sample drawn from every extraction, both reviewed and auto-approved.",
+        "Compare the overall review rate against last month's and investigate any drop as missed errors.",
+        "Ask the model to re-score its confidence for every field of each extraction a second time."
+      ],
+      "correctIndex": 0,
+      "explanation": "The question is what the router lets *through*, so audit only what it let through. That's random sampling used as calibration, not as the routing mechanism. Sampling reviewed items wastes audit effort on documents a person already checked, review rate isn't an error measure, and re-asking the model for confidence doesn't produce ground truth."
+    },
+    {
+      "id": "q11",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O22"
+      ],
+      "prompt": "A router's recall is the share of all wrong extractions that it sent to human review.",
+      "correct": true,
+      "explanation": "Recall = wrong extractions reviewed ÷ all wrong extractions. Precision is the share of reviewed items that were actually wrong. When money moves, tune for the recall you need first, then lower the review rate without losing it."
+    },
+    {
+      "id": "q12",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O22",
+        "O23"
+      ],
+      "prompt": "Each night, 3,000 invoices are extracted for a payment run 36 hours later, and accountants check the risky ones in the morning. Which design best fits both the processing and the review requirements?",
+      "options": [
+        "Run the extraction synchronously so the results are ready at once, then send a random 10% sample to the accountants.",
+        "Run a batch, retry only failed requests, then route by validation, field confidence, ambiguity and document traits.",
+        "Run a batch, then send to the accountants every extraction whose model-reported overall confidence is below 0.9.",
+        "Run the extraction synchronously, and route only the extractions that contain null fields to accountants for review."
+      ],
+      "correctIndex": 1,
+      "explanation": "Nothing is blocked and there are 36 hours, so a batch (50% cheaper) fits, with targeted retries. The review should be evidence-based: validation, field-level confidence and ambiguity, and document characteristics. Random sampling, a single overall-confidence cut-off and nulls-only routing each miss classes of errors, and synchronous processing pays double for no benefit."
+    }
+  ]
+}

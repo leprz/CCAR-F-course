@@ -1,0 +1,201 @@
+{
+  "lectureSlug": "04-context-management",
+  "title": "Part 4 — Context management",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O21"
+      ],
+      "prompt": "A support agent summarizes older turns once the conversation passes 50k tokens. After compaction it tells a customer their refund is \"around $900, coming soon\". Earlier it had confirmed exactly $899.99 within 5 business days. What is the most effective fix?",
+      "options": [
+        "Move to a model with a larger context window, so compaction triggers much later and the early facts stay in their original form.",
+        "Summarize more often, so each summary covers fewer turns and has less room to paraphrase the amounts and deadlines.",
+        "Keep exact ids, amounts, dates and commitments in a structured state object outside the summary, and inject it every request.",
+        "Replace summarization with a sliding window of the last 10 messages, so the model only ever sees verbatim turns."
+      ],
+      "correctIndex": 2,
+      "explanation": "Summaries paraphrase, so numbers and promises are what they lose first. Critical facts belong in a structured state that is merged, not re-summarized. A bigger window only delays the problem and degrades recall (context rot). More frequent summaries compound the paraphrasing. A bare sliding window drops the early facts entirely."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O21"
+      ],
+      "prompt": "A team implements a sliding window as `messages.slice(-8)`. Some requests now fail with a 400 error. What is the most likely cause?",
+      "options": [
+        "The cut can land between an assistant `tool_use` and its `tool_result`, so the window starts with an orphaned result.",
+        "Eight messages can exceed the model's context window when tool outputs are large, which the API rejects with a 400.",
+        "Trimming history with a sliding window requires the `context-management` beta header, which this request doesn't send.",
+        "`slice(-8)` drops the system prompt along with the early messages, and requests without a system prompt are rejected."
+      ],
+      "correctIndex": 0,
+      "explanation": "A `tool_result` must answer a `tool_use` in the immediately preceding assistant message. Cut only at human-turn boundaries (a user message that isn't just tool results) so pairs stay together and the history starts with a user turn. The failures depend on where the slice cuts, not on size. Client-side trimming needs no beta header, and the system prompt is a separate top-level field, not a message."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O21"
+      ],
+      "prompt": "An agent's context is mostly large `read_file` and `search` results from 40 turns ago that it has already acted on. Which technique targets this most directly?",
+      "options": [
+        "Summarize only the user's messages, since they hold the instructions and tool results can be re-fetched if needed.",
+        "Raise `max_tokens` so the model has more room in the window for the large tool results it still needs to keep.",
+        "Move the tool definitions into the system prompt so they get cached and no longer count against the model's context window.",
+        "Clear old tool results while keeping the recent ones, e.g. context editing's `clear_tool_uses_20250919` with `keep`."
+      ],
+      "correctIndex": 3,
+      "explanation": "Stale, bulky tool outputs are usually the biggest consumer in agent loops. Tool-result clearing removes them while keeping recent pairs. Summarizing user messages misses the real cost. `max_tokens` controls output length, not input. Cached content still counts toward the context window."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O21"
+      ],
+      "prompt": "Prompt caching reduces how much of the context window a long, repeated system prompt occupies.",
+      "correct": false,
+      "explanation": "Cached prefixes still count toward the context window. Caching changes the cost (and latency) of those tokens, not whether they occupy the window."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O21"
+      ],
+      "prompt": "Before sending a request, you need to know whether it fits a 150k-token budget for the model you'll actually call. What should you use?",
+      "options": [
+        "Divide the total character count by 4, the standard rule of thumb for converting English text into tokens.",
+        "Call the token counting endpoint (`messages.countTokens`) with the same model, system, tools and messages.",
+        "Take `usage.input_tokens` from the previous response and add a rough estimate for the newly appended message.",
+        "Multiply the word count by 1.3, which tracks the tokenizer closely for typical English prose and code."
+      ],
+      "correctIndex": 1,
+      "explanation": "Token counting accepts the same inputs as a message request and counts with that model's tokenizer. It's free (rate-limited) and gives an estimate. Heuristics drift, especially since newer tokenizers produce about 30% more tokens. Previous usage misses whatever changed."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O20"
+      ],
+      "prompt": "A coordinator agent must review 60 files. It reads them one by one into its own conversation and fails at file 35 when the context fills up. Which redesign best keeps the coordinator coherent?",
+      "options": [
+        "Instruct the coordinator to be concise and summarise each file in its own words immediately after reading it.",
+        "Read all 60 files in one parallel turn, so they all arrive together and the coordinator can analyse them in a single pass.",
+        "Delegate each file group to an isolated subagent that returns only structured findings, and log progress in a scratchpad.",
+        "Switch to a model with a bigger context window and keep the design, since 60 files will then fit comfortably."
+      ],
+      "correctIndex": 2,
+      "explanation": "Subagents work in their own fresh context and return summaries, so file contents never accumulate in the coordinator. A scratchpad makes progress survive interruptions. Being concise doesn't stop the raw file contents from filling the context. Parallel reads still land in the same context. A bigger window only delays the failure and worsens recall."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O20"
+      ],
+      "prompt": "A subagent that reviews one file keeps flagging `as any` in `src/legacy/`, which the project conventions explicitly allow. The coordinator has the conventions in its own context. What is wrong?",
+      "options": [
+        "The subagent's `max_tokens` is too low, so it truncates its analysis before applying the project's allowed patterns.",
+        "The subagent should run with `model: 'inherit'`, so it shares the coordinator's context as well as its model.",
+        "The coordinator must spawn the subagent with `tool_choice: any`, so the conventions are forwarded with the call.",
+        "Subagents start with a fresh context, so the conventions must be passed into the subagent's prompt explicitly."
+      ],
+      "correctIndex": 3,
+      "explanation": "Isolation cuts both ways: nothing from the coordinator's conversation reaches a (non-fork) subagent, including the standards it needs. Pass conventions, prior findings and scope explicitly in its prompt. `max_tokens` limits output length, `inherit` only selects the model, and `tool_choice` doesn't forward any context."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O20"
+      ],
+      "prompt": "In Claude Code you need to find where `computeTotals` is called across a large repo without filling the context. Which approach is best?",
+      "options": [
+        "Grep for `computeTotals` to find matching files and lines, then Read only those ranges (or delegate to Explore).",
+        "Read every file under `src/` in order, so you have the full picture of the code before locating the call sites.",
+        "Glob `**/*.ts` to list all source files, then Read each result in turn and note where the function appears.",
+        "Run `cat` on every file through Bash and pipe the output into the context, which is faster than many Read calls."
+      ],
+      "correctIndex": 0,
+      "explanation": "Targeted reads build understanding incrementally: search narrows the scope, then you read only what matters. Reading or catting everything fills the context with irrelevant code, and Glob finds files by name, not by content. The read-only Explore subagent keeps the search noise out of the main context entirely."
+    },
+    {
+      "id": "q9",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O02"
+      ],
+      "prompt": "A review agent ran yesterday. Overnight, 3 of 120 files changed. Today you `--resume` the old session and it re-reports an issue in a file that was fixed. Which approach best restores accurate state without redoing work?",
+      "options": [
+        "Resume the session again and tell the agent to double-check every finding against the current state of the repository.",
+        "Start fresh: diff content hashes against the scratchpad, re-analyse only the 3 changed files, inject current findings.",
+        "Re-run the full review of all 120 files in a new session, so every finding reflects the code as it is today.",
+        "Fork the old session with `--fork-session` so the new branch starts clean while keeping yesterday's findings."
+      ],
+      "correctIndex": 1,
+      "explanation": "The resumed transcript contains stale tool results showing the old file content. Targeted re-analysis of changed files plus context injection gives correct, current state at minimal cost. A full re-run wastes work. Forking copies the same stale history."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "recall",
+      "objectives": [
+        "O02"
+      ],
+      "prompt": "With the Claude Agent SDK, you want to explore an alternative approach from an existing session without modifying that session's history. Which options do you set?",
+      "options": [
+        "`resume: sessionId` with `continue: true`",
+        "`continue: true` with `forkSession: true`",
+        "`sessionId: sessionId` with `forkSession: true`",
+        "`resume: sessionId` with `forkSession: true`"
+      ],
+      "correctIndex": 3,
+      "explanation": "`resume` loads a specific session's history, and `forkSession: true` continues it under a new session id, leaving the original unchanged (like `--fork-session` / `/branch` in Claude Code). `continue` picks up the most recent session rather than a chosen one, and `resume` takes a session id, not a boolean. Setting `sessionId` alone doesn't load the old session's history, so there is nothing to fork."
+    },
+    {
+      "id": "q11",
+      "type": "true-false",
+      "difficulty": "apply",
+      "objectives": [
+        "O02",
+        "O20"
+      ],
+      "prompt": "Detecting changed files by comparing file names between sessions is enough to decide which files need re-analysis.",
+      "correct": false,
+      "explanation": "An edited file keeps its name. Compare content hashes (store them in the scratchpad with the findings) to find changed, added, removed and unchanged files."
+    },
+    {
+      "id": "q12",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O20",
+        "O21"
+      ],
+      "prompt": "In a long Claude Code session, the rule \"never edit generated files in `dist/`\", given early in the chat, stops being followed after auto-compaction. What is the most robust fix?",
+      "options": [
+        "Put the rule in CLAUDE.md or a path-scoped `.claude/rules/` file, which is reloaded and survives compaction.",
+        "Repeat the rule in the chat every 20 turns, so a recent copy is always present after each compaction.",
+        "Disable auto-compaction for the session, so the early instruction is never summarized away from the context.",
+        "Run `/clear` before each task and restate the rule, so the context starts small and the rule stays prominent."
+      ],
+      "correctIndex": 0,
+      "explanation": "Compaction summarizes the conversation, so detailed early instructions can get lost. Persistent rules belong in CLAUDE.md or `.claude/rules/`, which are reloaded, not in chat history. Repeating or restating the rule by hand is fragile, and disabling compaction just runs the session into the context limit."
+    }
+  ]
+}

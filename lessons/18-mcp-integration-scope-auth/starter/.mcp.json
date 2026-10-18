@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "shop": {
+      "type": "http",
+      "url": "https://mcp.shop.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer shp_live_8f3a91c2d4e5b6a7f8091a2b3c4d5e6f"
+      }
+    },
+    "tickets": {
+      "command": "npx",
+      "args": ["-y", "@example/tickets-mcp"],
+      "env": {
+        "TICKETS_API_KEY": "tk_live_29d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4"
+      }
+    },
+    "ana-notes": {
+      "command": "node",
+      "args": ["/Users/ana/dev/notes-mcp/index.js"]
+    }
+  }
+}

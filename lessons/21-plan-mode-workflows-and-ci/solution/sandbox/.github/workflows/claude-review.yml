@@ -1,0 +1,29 @@
+name: claude-review
+on: pull_request
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >-
+          claude -p "Review the diff against origin/main for violations of CONVENTIONS.md. Report findings only; do not edit files."
+          --output-format json
+          --permission-mode dontAsk
+          --allowedTools "Read,Grep,Glob,Bash(git diff *)"
+          --max-turns 15
+          --max-budget-usd 3.00
+          --no-session-persistence
+          --json-schema "$(cat .claude/review-schema.json)"
+          > review.json
+      - name: Fail on errors or hit limits
+        run: jq -e '.is_error == false and .subtype == "success"' review.json
+      - name: Fail on high-severity findings
+        run: jq -e '[.structured_output.findings[] | select(.severity == "critical" or .severity == "high")] | length == 0' review.json

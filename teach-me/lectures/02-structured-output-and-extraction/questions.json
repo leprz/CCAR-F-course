@@ -1,0 +1,228 @@
+{
+  "lectureSlug": "02-structured-output-and-extraction",
+  "title": "Part 2 — Structured output and extraction",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O25"
+      ],
+      "prompt": "A classification service on Claude Sonnet 5.5 must return `{\"label\": ..., \"reason\": ...}` for every request; any unparseable response crashes the consumer. Which approach is MOST reliable?",
+      "options": [
+        "Prefill the assistant turn with `{\"label\": \"` so Claude has to continue the JSON object rather than writing any prose.",
+        "Set `output_config.format` to a JSON schema with `label` as an enum, so constrained decoding guarantees the shape.",
+        "Add \"Respond ONLY with valid JSON\" to the system prompt and retry the request whenever `JSON.parse` fails.",
+        "Define a `classify` tool and force it with `tool_choice: {type: \"tool\", name: \"classify\"}` on every request."
+      ],
+      "correctIndex": 1,
+      "explanation": "Structured outputs (`output_config.format`) uses constrained decoding, so the response always matches the schema, apart from refusal or max_tokens stops. Prefill returns a 400 error on Claude 4.6+ models, prompting is only best effort, and forced `tool_choice` returns a 400 error on Sonnet 5.5. On models that support forcing, a forced tool is the classic equivalent."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O25"
+      ],
+      "prompt": "A team on a legacy model that predates structured outputs needs guaranteed schema-shaped output. Forced tool use is supported. What should they do?",
+      "options": [
+        "Prefill the assistant turn with `{` so the model continues the JSON object, then parse the continuation text.",
+        "Ask for JSON wrapped in `<json>` tags and extract it with a regex, retrying when the extracted text fails to parse.",
+        "Define the tool but keep `tool_choice: {type: \"auto\"}` and add a sentence to the prompt asking Claude to use it.",
+        "Define a tool whose `input_schema` is the target shape, force it with `tool_choice`, and read `tool_use.input`."
+      ],
+      "correctIndex": 3,
+      "explanation": "A forced tool call returns parsed input shaped by the schema, which is the classic guaranteed-structure pattern. Prefill and tags make the right format more likely but don't guarantee the schema. With `auto`, a prompt request still allows a plain-text answer."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O25"
+      ],
+      "prompt": "Prefilling the assistant turn with `{` is a supported way to force JSON on Claude Opus 5.5.",
+      "correct": false,
+      "explanation": "From Claude 4.6 models onward, a prefilled last assistant turn returns a 400 error. The docs recommend structured outputs, or tools with enum fields for classification, instead."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O26"
+      ],
+      "prompt": "An extraction schema marks `po_number` as `{\"type\": \"string\"}` and required. Audits show realistic-looking PO numbers on invoices that have none. What is the root cause, and what is the fix?",
+      "options": [
+        "The sampling temperature is too high for extraction. Set `temperature` to 0 so the model stops inventing numbers.",
+        "The prompt lacks examples. Add few-shot invoices that show PO numbers so the model learns where they usually appear.",
+        "The schema demands a value. Make it nullable (`[\"string\", \"null\"]`), keep it required, and say \"null if not shown\".",
+        "Drop `po_number` from `required` so the model can omit it when unsure, and leave the type as a plain `string`."
+      ],
+      "correctIndex": 2,
+      "explanation": "A required, non-null field is a contract the model must fill, so a missing value turns into a plausible invention. Required + nullable makes absence an explicit, valid answer. Dropping it from `required` also avoids forcing a value, but nullable keeps the shape stable and makes \"not present\" explicit. Temperature 0 makes output deterministic, not grounded. More examples of PO-bearing invoices would push toward filling the field."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O26"
+      ],
+      "prompt": "The `document_type` enum is `[\"invoice\", \"credit_note\"]`. Contracts and delivery notes arrive occasionally and get labelled `invoice`. What's the best schema change?",
+      "options": [
+        "Add escape values such as `\"contract\"` and `\"other\"`, and route `other` to review, so no label is forced.",
+        "Add \"Be very careful to classify document types correctly\" to the prompt and keep the two-value enum.",
+        "Remove the enum and make `document_type` a free-text string so the model can describe any document accurately.",
+        "Add a `description` to the enum explaining that contracts are not invoices, and keep only the two values."
+      ],
+      "correctIndex": 0,
+      "explanation": "A closed enum with no way out forces unexpected inputs into the nearest label, however carefully you prompt or describe it. Adding `other` (plus specific values you care about) keeps the field constrained while letting the model be honest. Removing the enum loses the downstream contract."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O26"
+      ],
+      "prompt": "An invoice shows `Date: 02/03/2026` from a vendor whose country isn't stated. How should a well-designed extraction schema let Claude handle this?",
+      "options": [
+        "Pick the US reading (February 3) because it is the most common convention across the vendor base.",
+        "Put the raw string `\"02/03/2026\"` into `issue_date` so no information is lost and a human can decide later.",
+        "Return both readings comma-separated in `issue_date` so the downstream code can choose the right interpretation.",
+        "Return `issue_date: null` and list `issue_date` in `ambiguous_fields`, so the record can be routed for review."
+      ],
+      "correctIndex": 3,
+      "explanation": "An ambiguity channel lets the model signal uncertainty without fabricating a value, and it routes the field to a reviewer. Guessing creates confident errors. A raw string or two comma-separated dates break the ISO date contract downstream."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O29"
+      ],
+      "prompt": "Extraction is accurate on US invoices but inconsistent on German and Polish ones (`1.234,56`, `2 460,00 zł`, `04.03.2026`). Which combination improves consistency the most?",
+      "options": [
+        "Five more US invoices as few-shot examples, since adding examples improves consistency regardless of their format.",
+        "Normalisation rules with before→after examples, diverse few-shot invoices including EU formats, and code checks on totals.",
+        "Move to a larger model and keep the prompt unchanged, since handling format variation is a capability problem, not a prompt one.",
+        "Output amounts and dates as raw strings exactly as printed, so no conversion happens and nothing can be misread."
+      ],
+      "correctIndex": 1,
+      "explanation": "Varied formats call for explicit canonical forms, examples that cover the variants, and deterministic checks on the values. Examples should be relevant and diverse; more of the easy case adds nothing. A bigger model with the same ambiguous instructions stays inconsistent. Raw strings just push the inconsistency downstream."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O31"
+      ],
+      "prompt": "Claude often computes a `due_date` from phrases like \"pay within 15 days\", and about a third of those dates are wrong. What is the best prompt change?",
+      "options": [
+        "Add \"double-check your date arithmetic before answering\" to the prompt so the model verifies each computed date.",
+        "Add few-shot examples that walk through adding 15 or 30 days to an issue date, so the date arithmetic becomes reliable.",
+        "Exclude it explicitly: don't compute due dates from relative terms; output null and keep the terms in `payment_terms`.",
+        "Remove `due_date` from the schema entirely, so the model can't produce wrong dates in that field at all."
+      ],
+      "correctIndex": 2,
+      "explanation": "Explicit exclusion boundaries stop the model producing output in a category where it's unreliable, and give it a safe alternative. \"Double-check\" doesn't change the behaviour, and worked arithmetic examples still leave the model doing an error-prone computation. Removing the field loses due dates that are printed and reliable."
+    },
+    {
+      "id": "q9",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O31"
+      ],
+      "prompt": "An exclusion rule works best when it names the category, says why it's excluded, and says what to output instead (for example null).",
+      "correct": true,
+      "explanation": "Without an allowed alternative, the model is still under pressure to fill the gap. A reason helps it generalise to similar cases, and the safe output makes compliance easy."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O28"
+      ],
+      "prompt": "Line-item extraction works for short invoices but produces invalid JSON for 300-line ones, and `stop_reason` is `max_tokens`. A colleague proposes raising `max_tokens` to 64000. What do you recommend?",
+      "options": [
+        "Split the line items into scoped chunk calls, run them concurrently, merge by line number, and check count and total.",
+        "Raise `max_tokens` to 64000 as proposed, since the model supports it and one call keeps all line items consistent.",
+        "Ask the model to shorten every line-item description so all 300 lines still fit within the current `max_tokens` budget.",
+        "Switch from structured outputs to prompt-based JSON, so the response is no longer cut off by schema constraints."
+      ],
+      "correctIndex": 0,
+      "explanation": "When output grows with input, the scalable fix is smaller scoped calls whose results are merged and reconciled. A huge `max_tokens` adds latency and cost, runs into model and SDK limits, and breaks again on the next larger document. Shorter descriptions only buy a little room, and prompt-based JSON truncates the same way, because the limit is output length, not the schema."
+    },
+    {
+      "id": "q11",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O28"
+      ],
+      "prompt": "In a split-and-merge extractor, one chunk still comes back with `stop_reason: \"max_tokens\"`. What should the pipeline do?",
+      "options": [
+        "Retry the same chunk unchanged a few times, since output length varies between runs and one attempt will fit.",
+        "Keep the partial JSON and repair it by closing the open brackets, then merge whatever items were completed.",
+        "Drop that chunk and return the remaining items, flagging the document as partially extracted for later review.",
+        "Split that chunk in half, retry both halves, and merge the results using a stable key such as `line_no`."
+      ],
+      "correctIndex": 3,
+      "explanation": "Shrinking the scope makes the work fit the budget, and stable keys make merging and de-duplication safe. Retrying unchanged fails the same way, repaired JSON silently loses items, and dropping the chunk produces an incomplete result."
+    },
+    {
+      "id": "q12",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O12"
+      ],
+      "prompt": "A team improves an extraction prompt by sending Claude one failing document at a time and asking it to \"fix the prompt\". Each fix breaks a different document. How should they restructure the workflow?",
+      "options": [
+        "Keep the per-document loop but switch to a stronger model for the revisions, so each individual fix is less likely to break the others.",
+        "Fix failures one at a time as now, but re-test only the document that just failed so each revision is confirmed before moving on.",
+        "Each round, score the whole set and send one batched message of failures by field (input → expected → actual); keep the best prompt.",
+        "Drop the revision loop and have a human rewrite the prompt from scratch, since automated revisions always oscillate between fixes."
+      ],
+      "correctIndex": 2,
+      "explanation": "Iterative refinement converges with consolidated evaluation (the whole set), targeted feedback (doc, field, expected, actual), batched issues (so patterns are visible) and concrete I/O examples, keeping the best-scoring version. A stronger reviser still patches one anecdote at a time, and re-testing only the failed document hides regressions elsewhere. Abandoning the loop throws away a workable process instead of fixing its structure."
+    },
+    {
+      "id": "q13",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O12"
+      ],
+      "prompt": "Which feedback message is most likely to produce a useful prompt revision?",
+      "options": [
+        "\"The extraction results are not good enough across several documents and fields; please review and improve the prompt.\"",
+        "\"currency failed on 3/4 docs: INV-2 expected EUR got USD; INV-8 expected PLN got USD; INV-5 expected null got USD.\"",
+        "\"INV-2 is wrong. Please look at that document again carefully and fix the prompt so this invoice extracts correctly.\"",
+        "\"Make the prompt longer and more detailed, especially around currencies, dates and totals, so the model is more careful.\""
+      ],
+      "correctIndex": 1,
+      "explanation": "Targeted, batched feedback with concrete expected vs actual values exposes the pattern (it defaults to USD) and the exact behaviour wanted. A vague quality complaint, a single anecdote, or a request for \"more detail\" give the reviser nothing specific to act on."
+    },
+    {
+      "id": "q14",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O29",
+        "O25"
+      ],
+      "prompt": "With structured outputs enabled, the extracted values are guaranteed to be correct, so validation in code is unnecessary.",
+      "correct": false,
+      "explanation": "Structured outputs guarantees the shape (it parses and matches the schema), not the truth of the values. Checks such as line items summing to the total still catch value errors, and the guarantee doesn't hold for `refusal` or `max_tokens` responses."
+    }
+  ]
+}

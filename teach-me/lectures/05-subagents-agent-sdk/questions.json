@@ -1,0 +1,237 @@
+{
+  "lectureSlug": "05-subagents-agent-sdk",
+  "title": "Part 5 — Subagents with the Agent SDK",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O05"
+      ],
+      "prompt": "A documentation-review subagent is meant to only read files, but in production it rewrote a README. Its definition is:\n\n```ts\n'doc-reviewer': {\n  description: 'Reviews docs for accuracy. Use for documentation reviews.',\n  prompt: 'Review documentation and report issues. Do not edit files.',\n}\n```\n\nWhat is the most reliable fix?",
+      "options": [
+        "Strengthen the prompt to \"NEVER edit, write or modify any file\" and repeat it at the end of the prompt.",
+        "Add `Read`, `Grep` and `Glob` to the query's `allowedTools`, so only those three tools are approved for it.",
+        "Set `model: 'haiku'` on the definition, since smaller models take less initiative and rarely edit files.",
+        "Add `tools: ['Read', 'Grep', 'Glob']` to the definition, so editing tools aren't available to the subagent."
+      ],
+      "correctIndex": 3,
+      "explanation": "Omitting `tools` means the subagent inherits every tool available to subagents, including Edit and Write. An explicit allowlist removes them entirely. A prompt instruction is only a request. `allowedTools` pre-approves tools; it doesn't take any away. The model choice doesn't restrict tools."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O05",
+        "O06"
+      ],
+      "prompt": "A team loads agent definitions from JSON. One entry is:\n\n```json\n\"report-writer\": {\n  \"description\": \"Writes report.md from findings. Use once research is complete.\",\n  \"prompt\": \"Write the report. Keep citations.\",\n  \"allowedTools\": [\"Read\", \"Write\"]\n}\n```\n\nThe writer is seen calling `WebSearch`. Why?",
+      "options": [
+        "An agent's own `allowedTools` only takes effect when the parent query also sets `permissionMode: 'dontAsk'`.",
+        "`allowedTools` isn't an AgentDefinition field and is ignored, so the agent inherits all tools; use `tools`.",
+        "WebSearch is a server-side tool, so it can't be removed from an individual agent's tool set at all.",
+        "The description says \"once research is complete\", which makes the SDK grant the research tool set."
+      ],
+      "correctIndex": 1,
+      "explanation": "The per-agent allowlist field is `tools`. Unrecognized fields are ignored without an error, so the agent runs with defaults and inherits everything. That's exactly the kind of misconfiguration the diagnosis objective tests."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O05"
+      ],
+      "prompt": "An SDK research job behaves differently on each developer's laptop: some runs follow personal instructions from `~/.claude/CLAUDE.md` and personal permission rules. You want every run to depend only on the configuration in code. What should you set?",
+      "options": [
+        "`permissionMode: 'bypassPermissions'`, so the personal permission rules on each laptop are skipped.",
+        "`model: 'inherit'` on every subagent, so all runs use the same model regardless of each user's configuration.",
+        "`settingSources: []`, so no user, project or local settings or CLAUDE.md files are loaded for the run.",
+        "`disallowedTools: ['CLAUDE.md']`, so the agent can't read personal instruction files during the run."
+      ],
+      "correctIndex": 2,
+      "explanation": "`settingSources` controls which filesystem settings load. When it's omitted, all sources load, as in the CLI; `[]` isolates the run. Include `'project'` if you deliberately want the project CLAUDE.md. Bypassing permissions is unsafe and doesn't stop CLAUDE.md loading. `inherit` only picks the model, and `disallowedTools` takes tool names, not files."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O33"
+      ],
+      "prompt": "A coordinator holds `Agent`, `WebSearch`, `WebFetch`, `Read`, `Grep`, `Write` and `Bash`. It often runs dozens of searches itself instead of delegating to its `web-researcher` subagent. What change best addresses the root cause?",
+      "options": [
+        "Limit the coordinator to `Agent` plus minimal read tools, and give the search tools only to `web-researcher`.",
+        "Add \"Always delegate research to web-researcher\" to the coordinator's system prompt and keep its tools.",
+        "Give `web-researcher` the coordinator's full tool set, so delegating never loses any capability.",
+        "Raise the coordinator's `maxTurns`, so it still has enough turns left to delegate after doing its own searching."
+      ],
+      "correctIndex": 0,
+      "explanation": "Tool distribution by role: a coordinator that owns the research tools will use them. Taking them away makes out-of-role work impossible and leaves the coordinator fewer decisions to make. A prompt alone is weaker, widening the subagent's tools works against least privilege, and more turns don't change who does the searching."
+    },
+    {
+      "id": "q5",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O33",
+        "O05"
+      ],
+      "prompt": "In current Claude Code / Agent SDK versions, a subagent cannot spawn its own subagents under any configuration.",
+      "correct": false,
+      "explanation": "Nesting is allowed by default up to 3 layers (since Claude Code v2.1.219; the default changed several times). Prevent it by leaving `Agent` out of the subagent's `tools`, adding it to `disallowedTools`, or setting `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`. Older material says subagents can't nest, so read questions carefully."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O06"
+      ],
+      "prompt": "In a headless CI job, the coordinator's attempts to delegate are all denied, and the job finishes with no subagent output. The configuration is:\n\n```ts\noptions: {\n  agents: { analyst: {/* valid */} },\n  allowedTools: ['Read', 'Grep', 'Glob'],\n  permissionMode: 'dontAsk',\n}\n```\n\nWhat is missing?",
+      "options": [
+        "`'Agent'` in the analyst's own `tools` list, so the analyst is permitted to be spawned by the coordinator.",
+        "A `.claude/agents/analyst.md` file, because programmatic agents need a matching file to be spawnable.",
+        "`'Agent'` in `allowedTools`: in `dontAsk` mode anything not pre-approved is denied, including spawning.",
+        "`settingSources: ['project']`, because agents in `options.agents` only register from project settings."
+      ],
+      "correctIndex": 2,
+      "explanation": "Spawning needs the spawn tool to be available *and* approved. Here it's available (no `tools` restriction) but not approved. Putting `Agent` in the subagent's own tools would let the *subagent* spawn, which is the wrong layer. Programmatic agents need neither a file counterpart nor project settings."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O06"
+      ],
+      "prompt": "A coordinator is configured with `tools: ['Read', 'Grep', 'Glob']`, `allowedTools: ['Agent', 'Read', 'Grep', 'Glob']`, and three well-described agents in `agents`. It never delegates, and does all the reading itself. Which diagnosis is correct?",
+      "options": [
+        "`allowedTools` must list each subagent by name, such as `'analyst'`, rather than the generic `Agent` tool.",
+        "Each agent needs `background: true` in its definition before the coordinator is allowed to spawn it.",
+        "Spawning subagents requires `permissionMode: 'bypassPermissions'`, which this configuration doesn't set.",
+        "`tools` lacks `Agent`, so the spawn tool doesn't exist; `allowedTools` only pre-approves and adds nothing."
+      ],
+      "correctIndex": 3,
+      "explanation": "Availability and approval are separate layers. `tools` sets which tools exist, and `allowedTools` auto-approves among them. A tool approved but absent is never offered to the model."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O06"
+      ],
+      "prompt": "Your monitoring counts subagent invocations by matching `tool_use` blocks named `\"Task\"`. After upgrading the SDK, the count drops to zero although subagents clearly run. What happened?",
+      "options": [
+        "Subagents now run in a separate process, so their spawning calls are no longer streamed back to the parent.",
+        "The spawn tool is now named `\"Agent\"` in `tool_use` blocks (it was `\"Task\"` before v2.1.63); match both.",
+        "`parent_tool_use_id` replaced `tool_use` blocks for subagents, so spawns now appear only as that field.",
+        "The upgrade disabled subagents until `agents` is re-registered under a new `agentDefinitions` key."
+      ],
+      "correctIndex": 1,
+      "explanation": "The tool was renamed from Task to Agent (the `system:init` tools list still shows `Task`). The SDK docs recommend matching both. `parent_tool_use_id` marks messages from *inside* a subagent; it isn't a replacement for the spawning call."
+    },
+    {
+      "id": "q9",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O04"
+      ],
+      "prompt": "A research coordinator must let subagents adapt when sources turn out to be off-topic, but it also needs to know what each subagent covered. Which delegation instruction fits best?",
+      "options": [
+        "\"Objective: what the corpus says about on-call impact. Success: every on-call source covered, conflicts explicit. Out of scope: wellbeing. Report: cited findings, gaps, discounted sources.\"",
+        "\"1. Open S2. 2. Open S3. 3. Open S8. 4. Copy every sentence that mentions on-call. 5. Summarise the copied sentences in order. 6. Do not consult other sources. 7. Send the summary back.\"",
+        "\"Research on-call impact however you think is best. Use any sources you find useful, follow leads freely, and tell me what you conclude when you are done.\"",
+        "\"Search the web for on-call studies, read all local sources, cover wellbeing and retention as well, then write and save the final report.md yourself.\""
+      ],
+      "correctIndex": 0,
+      "explanation": "Goal-oriented delegation (objective, success criteria, boundaries) allows adaptive behaviour, and the required report (gaps, sources discounted) keeps the coordinator informed and in control. The step list can't adapt, the open-ended version gives up visibility and boundaries, and the last mixes roles."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O04"
+      ],
+      "prompt": "When is a procedural (step-by-step) delegation the better choice?",
+      "options": [
+        "When the task is exploratory and the best path depends heavily on what the subagent finds along the way.",
+        "Whenever several subagents run in parallel, so their steps stay synchronised with each other.",
+        "When a regulated or audited sequence must run exactly in order, regardless of intermediate findings.",
+        "Whenever the coordinator needs visibility into what the subagent actually did during its work."
+      ],
+      "correctIndex": 2,
+      "explanation": "Procedural instructions fit mandated sequences. For exploration, goal-oriented delegation is better because the path depends on findings. Parallel subagents work independently, so synchronising their steps isn't a reason to dictate them. Visibility comes from a structured report-back, not from step lists."
+    },
+    {
+      "id": "q11",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O03"
+      ],
+      "prompt": "Subagents in a research pipeline frequently re-read sources the coordinator already analysed, and sometimes contradict findings it already established. The coordinator's Agent calls contain only `\"Analyse the output claims in S2, S5, S6, S9.\"` What should change?",
+      "options": [
+        "Give subagents a shared tool that reads the coordinator's full conversation history whenever they decide they need more context.",
+        "Set the subagents to `model: 'inherit'` so they share the coordinator's context as well as its model.",
+        "Let subagents message the coordinator back mid-task whenever they discover that some context is missing.",
+        "Include the question, prior findings with source ids and confidence, source metadata, scope and output format in the prompt."
+      ],
+      "correctIndex": 3,
+      "explanation": "A non-fork subagent starts fresh. The Agent tool's prompt string is the only thing passed from the parent, so everything it needs must be in that prompt. Exposing the whole history defeats context isolation, `inherit` only selects the model, and call-backs add round trips (and may be impossible for background agents)."
+    },
+    {
+      "id": "q12",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O03",
+        "O05"
+      ],
+      "prompt": "A non-fork subagent receives the parent's system prompt and conversation history, so it only needs the delta of new instructions.",
+      "correct": false,
+      "explanation": "It receives its own system prompt (`AgentDefinition.prompt`), the Agent tool's prompt, tool definitions and (with the right `settingSources`) project CLAUDE.md. It does NOT receive the parent's system prompt or history. Only a fork inherits the conversation."
+    },
+    {
+      "id": "q13",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O18"
+      ],
+      "prompt": "Three research subagents return free-text summaries. The synthesis step can't tell which source supports which claim, or how recent it is. Which subagent output design fixes this best?",
+      "options": [
+        "A longer, well-structured prose summary with inline citations like \"(S2)\" after every claim it makes.",
+        "JSON: a brief `summary`, `findings[]` with claim, quote, source_id, date, type, stance, confidence, plus gaps.",
+        "A single `{ \"answer\": string, \"confidence\": number }` object per subagent, to keep the merge step simple.",
+        "A markdown table with one row per claim and a stance column but no source details, to keep the token count low."
+      ],
+      "correctIndex": 1,
+      "explanation": "Synthesis needs per-finding attribution, dates and source types to weigh and merge evidence. It also needs gaps and discounted sources to judge coverage. Prose (even with inline ids) is fragile to parse, and the compact answers lose the citation metadata."
+    },
+    {
+      "id": "q14",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O18",
+        "O03"
+      ],
+      "prompt": "A subagent's report includes a finding with `source_id: \"S14\"`, but only S1–S10 were provided. How should the coordinator's pipeline handle this?",
+      "options": [
+        "Reject the report as invalid, list the validation errors, and re-delegate so the subagent corrects the citation.",
+        "Accept it and add S14 to the known source list, since the subagent may have found a legitimate new source online.",
+        "Drop the finding that cites `S14` without telling anyone, and pass the rest of the report on to synthesis.",
+        "Map `S14` to the closest matching known id by title similarity, so the finding keeps a valid citation."
+      ],
+      "correctIndex": 0,
+      "explanation": "Validate subagent output against the schema and the known sources. An id outside the provided set is likely fabricated, so fail loudly and retry with the specific error. Guessing or silent drops corrupt the synthesis."
+    }
+  ]
+}

@@ -76,7 +76,7 @@ def main():
             "title": fm.get("title", slug),
             "topic": fm.get("topic", ""),
             "date": date,
-            "depth": fm.get("depth", "focused"),
+            "depth": fm.get("depth", "chapter"),
             "questionCount": question_count,
             "tags": fm.get("tags", []),
             "objectives": sorted(objectives),

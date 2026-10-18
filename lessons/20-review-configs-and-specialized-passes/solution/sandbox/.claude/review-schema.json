@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": { "type": "string", "enum": ["security", "business-logic", "api-design"] },
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "summary": { "type": "string" },
+          "rule": { "type": "string" }
+        },
+        "required": ["category", "severity", "file", "line", "summary", "rule"]
+      }
+    }
+  },
+  "required": ["findings"]
+}

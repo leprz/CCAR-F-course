@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "shop": {
+      "type": "http",
+      "url": "${SHOP_MCP_URL:-https://mcp.shop.example.com/mcp}",
+      "headers": {
+        "Authorization": "Bearer ${SHOP_API_TOKEN}"
+      }
+    },
+    "tickets": {
+      "command": "npx",
+      "args": ["-y", "@example/tickets-mcp"],
+      "env": {
+        "TICKETS_API_KEY": "${TICKETS_API_KEY}"
+      }
+    }
+  }
+}

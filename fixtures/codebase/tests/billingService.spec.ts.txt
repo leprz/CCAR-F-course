@@ -1,0 +1,16 @@
+import { describe, expect, it } from 'vitest';
+import { splitInstalments } from '../src/services/billingService.ts';
+
+describe('splitInstalments', () => {
+  it('splits evenly when divisible', () => {
+    expect(splitInstalments(900, 3)).toEqual([300, 300, 300]);
+  });
+
+  it('puts the remainder on the last instalment so the parts sum to the total', () => {
+    const parts = splitInstalments(1000, 3);
+    expect(parts).toEqual([333, 333, 334]);
+    expect(parts.reduce((a, b) => a + b, 0)).toBe(1000);
+  });
+});
+
+// NOTE: computeTotals has no tests yet.

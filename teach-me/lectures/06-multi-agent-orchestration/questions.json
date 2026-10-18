@@ -1,0 +1,175 @@
+{
+  "lectureSlug": "06-multi-agent-orchestration",
+  "title": "Part 6 — Multi-agent orchestration",
+  "generatedAt": "2026-10-18T14:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O10"],
+      "prompt": "A legal team must check 40 contracts against the same 12-point checklist. Each contract's check is independent of the others, and the report is due in one hour. Which orchestration structure best fits?",
+      "options": [
+        "A coordinator agent that reads each contract first and then decides which checklist items to delegate to workers",
+        "A sequential pipeline that checks contract 1, then contract 2, and so on, with a validation gate after each contract",
+        "Parallel fan-out: one worker per contract, all running at once, followed by a short step that merges their results",
+        "A single agent with a 1M-token context window that loads all 40 contracts and runs the checklist in one pass"
+      ],
+      "correctIndex": 2,
+      "explanation": "The subtasks are known up front and independent, which is the sectioning form of parallelization and gives the lowest latency. A coordinator would spend a planning step deciding what's already known. A sequential pipeline makes independent work wait in line. One giant context gives up parallelism, and quality degrades as the context fills."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O10"],
+      "prompt": "A team proposes three parallel subagents to implement a feature: one changes the database schema, one updates the repository layer that reads it, and one updates the API handler that returns the repository's data. What is the main risk with this design?",
+      "options": [
+        "The layers depend on each other's changes, so parallel agents must guess at shared context and their edits conflict",
+        "Subagents cannot edit files in the Agent SDK, so the coordinator would have to apply every change itself afterwards",
+        "Three parallel subagents exceed the default concurrency limit, so two of them will be silently queued until later",
+        "The handler agent would need the database credentials, which would have to be passed through the coordinator's prompt"
+      ],
+      "correctIndex": 0,
+      "explanation": "Tightly coupled work with many dependencies is the case Anthropic calls a poor fit for multi-agent systems ('most coding tasks'). Each layer needs the others' decisions. A single agent, or a sequential pipeline with checks (schema → repository → handler), fits better. The other options describe limits that don't exist or concerns unrelated to the structure."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O10"],
+      "prompt": "A research assistant built on a coordinator-worker architecture spawns five subagents even for questions like \"What year was this paper published?\". Costs are far above budget. Which change addresses the cause most directly?",
+      "options": [
+        "Replace the coordinator's model with a smaller, cheaper model so that each of its planning steps costs less to run",
+        "Cap every subagent at three tool calls, so that each one finishes quickly regardless of the question asked",
+        "Cache all subagent results for 24 hours, so that repeated simple questions are answered without any new calls",
+        "Add explicit effort-scaling rules to the coordinator's prompt, e.g. one agent and a few calls for simple fact-finding"
+      ],
+      "correctIndex": 3,
+      "explanation": "Anthropic found that lead agents struggle to judge appropriate effort, so they embed scaling rules in the prompt: simple fact-finding gets 1 agent with 3–10 tool calls, comparisons get 2–4 subagents, and complex research gets 10+. A smaller model or caching treats the symptom, not the over-delegation. A blanket tool-call cap would also cripple genuinely broad research."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O07"],
+      "prompt": "A due-diligence coordinator runs three fixed tasks: financials, litigation and key customers. The financials worker reports that 60% of revenue comes from one customer who is currently suing the company. The final report says \"no material litigation risk\". What is the best fix?",
+      "options": [
+        "Give the litigation worker a larger model and a longer context window so that it finds the lawsuit by itself",
+        "Have the coordinator plan each next round from intermediate findings, turning high-stakes leads into targeted tasks",
+        "Extend the fixed plan with ten more standard due-diligence tasks so that future reviews cover more ground by default",
+        "Run the same three tasks twice and keep the report only if both runs agree on every risk they found in each area"
+      ],
+      "correctIndex": 1,
+      "explanation": "The plan ignored intermediate findings. Dynamic decomposition turns a discovered lead (the main customer is a litigant) into a new targeted task. A longer fixed checklist still misses the next surprise, voting on the same flawed plan repeats the same blind spot, and a bigger model doesn't change what it was asked to look at."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O07"],
+      "prompt": "Mid-research, workers report conflicting findings on one claim: four studies find output maintained, one randomised experiment finds it fell 9%. What should an adaptive coordinator do next?",
+      "options": [
+        "Record the majority view that output is maintained, since four studies outweigh one, and continue with other claims",
+        "Discard the randomised experiment as an outlier so that the final report can state a single, consistent conclusion",
+        "Spawn a targeted follow-up naming the disagreeing sources, asking why they differ and which evidence is stronger",
+        "Restart the whole research run with a different decomposition, because conflicting findings indicate a bad plan"
+      ],
+      "correctIndex": 2,
+      "explanation": "A conflict is itself a finding. It should trigger focused investigation into why the sources disagree (method, population, date, intervention). Majority voting and discarding outliers collapse uncertainty, which is exactly what O19 warns against. Restarting throws away valid work."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O07"],
+      "prompt": "An adaptive research coordinator plans follow-ups from conflicts. After adding it, some runs never finish: the same contested claim gets a new follow-up task every round. What is missing?",
+      "options": [
+        "A rule that drops any claim with conflicting evidence from the plan, so contested topics stop generating more work",
+        "Parallel execution within each round, so that the repeated follow-up tasks at least complete faster than before",
+        "A larger max_tokens on the coordinator, so it can see that it already planned this follow-up in an earlier round",
+        "Tracking of already-planned task ids, plus budgets on rounds and tasks, with any cut-off work reported as unexplored"
+      ],
+      "correctIndex": 3,
+      "explanation": "Adaptive decomposition needs guard rails: never plan the same task twice, bound rounds and total tasks, and report what the budget cut off so synthesis doesn't imply completeness. Dropping contested claims hides exactly the information that matters. Parallelism and max_tokens don't stop the loop."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O09"],
+      "prompt": "A three-stage extraction pipeline (collect per document → analyze per claim → report) is killed during document 7 of 10. The next run starts from document 1 again and pays for every model call twice. Which design fixes this?",
+      "options": [
+        "Resume the coordinator's Agent SDK session and ask it which documents it had already finished before the crash",
+        "Store a per-task record (status, input hash, output) in a checkpoint file saved after each task, and skip finished tasks",
+        "Run all ten documents in parallel so the whole collect stage finishes before the process has a chance to be killed",
+        "Write the full pipeline state to disk once at the end of every successful run, and reload that file at the start of the next"
+      ],
+      "correctIndex": 1,
+      "explanation": "Durable, per-task state lets the next run skip completed tasks and rerun only the interrupted one. Asking a model to recall its progress is unreliable and expensive (and the transcript may not exist on a new host). Parallelism doesn't prevent interruption. Saving only at the end loses everything when the crash comes first."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O09"],
+      "prompt": "A pipeline keys each document's cached extraction by its URL. A vendor re-publishes several documents at the same URLs with corrected figures, but reports keep showing the old figures. What is the right fix?",
+      "options": [
+        "Include a hash of the task's actual input (the document content) in the key, so changed content reruns that task",
+        "Clear the entire cache before every run so that all documents are always re-extracted with the latest content",
+        "Add a 24-hour expiry to every cached extraction so that corrected documents are picked up within one day",
+        "Ask the extraction model to compare its new output with the cached output and keep whichever looks more recent"
+      ],
+      "correctIndex": 0,
+      "explanation": "Idempotency should key on what the task consumes, not just where it came from. A content hash makes changed inputs rerun, and unchanged ones are reused, with downstream tasks invalidated only if their own inputs change. Clearing the cache or adding expiry wastes paid work and still serves stale data within the window. A model comparison is neither reliable nor cheap."
+    },
+    {
+      "id": "q9",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": ["O09"],
+      "prompt": "When a pipeline loads its checkpoint and finds a task still marked `running`, it should treat that task's stored output as complete, because the process only crashed after starting it.",
+      "correct": false,
+      "explanation": "`running` at load time means the process died mid-task, so any partial output can't be trusted. Reset the task to `pending` and run it again. Only `done` tasks (with an unchanged input hash) are reused."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O19"],
+      "prompt": "A synthesis agent writes: \"A four-day week raises productivity by up to 40% (confidence 0.9).\" The figure comes from a vendor whitepaper, while a randomised study in the inputs found output fell 9%. Which change best prevents this?",
+      "options": [
+        "Raise the synthesis model's temperature so it explores more phrasings and is less likely to settle on one source",
+        "Ask the synthesis model to report its confidence as a percentage instead of a decimal, to make overconfidence visible",
+        "Remove the vendor whitepaper from the corpus before synthesis so the misleading number can no longer appear at all",
+        "Use a per-claim schema with status and supporting/conflicting/discounted sources, and pass source type and date in"
+      ],
+      "correctIndex": 3,
+      "explanation": "The single-verdict format and missing metadata caused the collapse. A per-claim schema gives disagreement and discounted sources somewhere to go, and passing type and date lets the synthesis weigh evidence. Silently removing sources hides why a headline was excluded. Temperature and confidence formatting don't address the cause."
+    },
+    {
+      "id": "q11",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O19"],
+      "prompt": "Five of eight sources say a policy leaves output unchanged. One randomised experiment says output fell. A blog and a vendor say it rose sharply. How should a careful synthesis classify the output claim?",
+      "options": [
+        "Well-established: unchanged, because a clear majority of the eight sources agree and the rest are outliers",
+        "Insufficient evidence, because the sources point in three different directions and cannot be reconciled",
+        "Contested: the strong sources disagree, with the blog and vendor discounted and listed with their reasons",
+        "Well-established: improves, because two sources report large gains and the others only report no change"
+      ],
+      "correctIndex": 2,
+      "explanation": "Weigh first, then classify. The blog and vendor are discounted (and named with reasons). Among the remaining strong sources, a randomised experiment disagrees with the others, which makes the claim contested, not well-established. 'Insufficient evidence' is for too little strong evidence, which isn't the case here. Majority vote is the collapse the objective warns against."
+    },
+    {
+      "id": "q12",
+      "type": "true-false",
+      "difficulty": "apply",
+      "objectives": ["O19"],
+      "prompt": "When a validator finds several problems in a synthesis (an overclaimed status, a dropped conflict, a discounted source cited as support), it is best to send all of them back together in one feedback message and allow a bounded number of revisions.",
+      "correct": true,
+      "explanation": "Specific, batched feedback lets the model fix everything in one consolidated revision. With a forced synthesis tool, it goes back as an `is_error` tool_result for that call. One issue per round trip costs more calls and fixes can conflict. A bounded loop that surfaces whatever remains keeps cost under control without hiding problems."
+    }
+  ]
+}

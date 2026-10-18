@@ -2,7 +2,7 @@
 
 **Objective:** O01 (multiple tool calls in a single response turn, run in parallel to cut round trips)
 **Scenario:** support desk, ticket `T-101` ("status of A1001, A1002 and A1003?")
-**Read first:** [Part 1 lecture](../../teach-me/lectures/01-agentic-loop-and-tool-use/lecture.md), section *Parallel tool calls*
+**Read first:** [Part 1 lecture](../../teach-me/lectures/01-agentic-loop-and-tool-use/lecture.md), section 6, *Doing independent things at once: parallel tool calls*
 
 ## Situation
 

@@ -22,6 +22,7 @@ npx vitest run lessons/01 -t "TODO\(3\)"  # a single test group (-t is a regex, 
 npm run test:live -- lessons/01           # real API; needs ANTHROPIC_API_KEY in .env; skipped without it
 npm run typecheck                         # tsc --noEmit, strict; type-checks starters AND solutions
 npm run gate [-- 01 02]                   # quality gate: starter must fail, solution must pass
+                                          # (the learner edits starters in place: a solved lesson reports "starter passes"; that's expected, not a bug)
 npm run coverage                          # merge ./progress.json (exported from the quiz portal) into COVERAGE.md
 ```
 
@@ -48,8 +49,8 @@ or run `bash .claude/skills/teach-me/scripts/serve.sh teach-me` and open `index.
 
 ## Lectures and quizzes
 
-- One lecture per part: `teach-me/lectures/NN-topic/lecture.md` (teach-me template: front-matter plus five `##` sections,
-  topic subsections as `###`) and `questions.json`.
+- One lecture per part: `teach-me/lectures/NN-topic/lecture.md` (teach-me template: a book chapter with front-matter,
+  one running example, numbered concept sections with "Check yourself" questions, summary, traps, going deeper) and `questions.json`.
 - Every question carries `objectives: ["Oxx"]`. Validate with `python3 .claude/skills/teach-me/scripts/validate-quiz.py <file>`,
   then rebuild the index with `python3 .claude/skills/teach-me/scripts/build-library.py teach-me`.
 - Write questions as exam-style scenarios with plausible distractors, and explain why each wrong option is wrong.

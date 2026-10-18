@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-18T05:11:03Z",
+  "generatedAt": "2026-10-18T09:25:04Z",
   "lectures": [
     {
       "slug": "01-agentic-loop-and-tool-use",
       "title": "Part 1 — Agentic loop and tool use",
       "topic": "Claude API tool use, tool_choice and parallel tool calls",
       "date": "2026-10-18",
-      "depth": "deep",
+      "depth": "chapter",
       "questionCount": 10,
       "tags": [
         "cca-f",
@@ -25,6 +25,209 @@
       ],
       "notesPath": "lectures/01-agentic-loop-and-tool-use/lecture.md",
       "quizUrl": "quiz.html?lecture=01-agentic-loop-and-tool-use"
+    },
+    {
+      "slug": "02-structured-output-and-extraction",
+      "title": "Part 2 — Structured output and extraction",
+      "topic": "Structured outputs, extraction schemas, accuracy, truncation and iterative refinement",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 14,
+      "tags": [
+        "cca-f",
+        "part-2",
+        "structured-outputs",
+        "extraction",
+        "json-schema",
+        "few-shot",
+        "truncation",
+        "O25",
+        "O26",
+        "O29",
+        "O31",
+        "O28",
+        "O12"
+      ],
+      "objectives": [
+        "O12",
+        "O25",
+        "O26",
+        "O28",
+        "O29",
+        "O31"
+      ],
+      "notesPath": "lectures/02-structured-output-and-extraction/lecture.md",
+      "quizUrl": "quiz.html?lecture=02-structured-output-and-extraction"
+    },
+    {
+      "slug": "03-processing-modes-and-review-routing",
+      "title": "Part 3 — Processing modes and review routing",
+      "topic": "Messages API vs Message Batches API, and routing extractions to human review",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 12,
+      "tags": [
+        "cca-f",
+        "part-3",
+        "message-batches",
+        "batch-processing",
+        "human-review",
+        "confidence",
+        "O22",
+        "O23"
+      ],
+      "objectives": [
+        "O22",
+        "O23"
+      ],
+      "notesPath": "lectures/03-processing-modes-and-review-routing/lecture.md",
+      "quizUrl": "quiz.html?lecture=03-processing-modes-and-review-routing"
+    },
+    {
+      "slug": "04-context-management",
+      "title": "Part 4 — Context management",
+      "topic": "Context window optimization, cross-session context and session resumption",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 12,
+      "tags": [
+        "cca-f",
+        "part-4",
+        "context-window",
+        "summarization",
+        "compaction",
+        "scratchpad",
+        "subagents",
+        "resume",
+        "O21",
+        "O20",
+        "O02"
+      ],
+      "objectives": [
+        "O02",
+        "O20",
+        "O21"
+      ],
+      "notesPath": "lectures/04-context-management/lecture.md",
+      "quizUrl": "quiz.html?lecture=04-context-management"
+    },
+    {
+      "slug": "05-subagents-agent-sdk",
+      "title": "Part 5 — Subagents with the Agent SDK",
+      "topic": "AgentDefinition, tool distribution, spawn diagnosis, delegation prompts and subagent output schemas",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 14,
+      "tags": [
+        "cca-f",
+        "part-5",
+        "agent-sdk",
+        "subagents",
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O18",
+        "O33"
+      ],
+      "objectives": [
+        "O03",
+        "O04",
+        "O05",
+        "O06",
+        "O18",
+        "O33"
+      ],
+      "notesPath": "lectures/05-subagents-agent-sdk/lecture.md",
+      "quizUrl": "quiz.html?lecture=05-subagents-agent-sdk"
+    },
+    {
+      "slug": "06-multi-agent-orchestration",
+      "title": "Part 6 — Multi-agent orchestration",
+      "topic": "Orchestration patterns, dynamic decomposition, durable pipeline state and uncertainty-preserving synthesis",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 12,
+      "tags": [
+        "cca-f",
+        "part-6",
+        "multi-agent",
+        "orchestration",
+        "coordinator-worker",
+        "state-persistence",
+        "synthesis",
+        "O10",
+        "O07",
+        "O09",
+        "O19"
+      ],
+      "objectives": [
+        "O07",
+        "O09",
+        "O10",
+        "O19"
+      ],
+      "notesPath": "lectures/06-multi-agent-orchestration/lecture.md",
+      "quizUrl": "quiz.html?lecture=06-multi-agent-orchestration"
+    },
+    {
+      "slug": "07-mcp",
+      "title": "Part 7 — MCP: resources, tools, scopes and auth",
+      "topic": "Model Context Protocol in Claude Code and the Agent SDK",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 11,
+      "tags": [
+        "cca-f",
+        "part-7",
+        "mcp",
+        "resources",
+        "tool-descriptions",
+        "scopes",
+        "O34",
+        "O35",
+        "O36"
+      ],
+      "objectives": [
+        "O34",
+        "O35",
+        "O36"
+      ],
+      "notesPath": "lectures/07-mcp/lecture.md",
+      "quizUrl": "quiz.html?lecture=07-mcp"
+    },
+    {
+      "slug": "08-claude-code-configuration",
+      "title": "Part 8 — Configuring Claude Code",
+      "topic": "Claude Code configuration mechanisms, review setups, plan mode, CI, exploration and test generation",
+      "date": "2026-10-18",
+      "depth": "chapter",
+      "questionCount": 0,
+      "tags": [
+        "cca-f",
+        "part-8",
+        "claude-code",
+        "claude-md",
+        "rules",
+        "skills",
+        "hooks",
+        "permissions",
+        "plan-mode",
+        "ci",
+        "O08",
+        "O11",
+        "O13",
+        "O14",
+        "O15",
+        "O16",
+        "O17",
+        "O24",
+        "O30",
+        "O32"
+      ],
+      "objectives": [],
+      "notesPath": "lectures/08-claude-code-configuration/lecture.md",
+      "quizUrl": "quiz.html?lecture=08-claude-code-configuration"
     }
   ]
 }

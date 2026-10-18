@@ -2,7 +2,7 @@
 name: teach-me
 description: Turn any topic — or the thing Claude just recommended — into a saved markdown lecture plus an interactive quiz served from a local web portal. USE WHEN the user wants to learn/understand a concept more deeply, says "teach me X", triggers learning about a recommendation just made, points at a file to learn about it, or wants to review/retake a past lecture. In this repo (CCA-F exam prep) it also runs the objective-tagged quizzes, the mock exam page, and progress export.
 user-invocable: true
-argument-hint: '[topic | @file | @slug] [--deep] [--here|--global] [--list] [--open <slug>] [--requiz <slug>] [--notes-only] [--stop]'
+argument-hint: '[topic | @file | @slug] [--deep|--brief] [--here|--global] [--list] [--open <slug>] [--requiz <slug>] [--notes-only] [--stop]'
 allowed-tools:
   - Bash
   - Read
@@ -16,7 +16,7 @@ allowed-tools:
 
 # teach-me
 
-Create a focused lecture on a topic, generate a quiz from it, and open a local
+Create a book-style lecture (a chapter with a running example) on a topic, generate a quiz from it, and open a local
 web portal to study. Lectures are saved as markdown so they can be revisited;
 quizzes are JSON loaded over HTTP (never embedded in HTML).
 
@@ -63,7 +63,8 @@ From `$ARGUMENTS`, detect (in this order):
   contents (e.g. `@infer-in-typescript`) → go to **§7 Reopen** with that slug.
 - `--requiz <slug>` → go to **§6 Requiz**.
 - Otherwise this is a **create** (§2–§5). Note these create-flags:
-  - `--deep` → expanded lecture depth (else "focused").
+  - `--deep` → textbook depth; `--brief` → short refresher; else a full chapter
+    sized to the subject (§4).
   - `--notes-only` → write the lecture only; skip quiz, manifest-quiz fields, and server.
   - `--here` / `--global` → accepted for compatibility; in this repo the root
     is always `<repo>/teach-me/` (§3).
@@ -110,10 +111,35 @@ lecture (a topic lecture is updated in place only when the user asks for it).
 ## 4. Write the lecture
 
 Read `$SKILL/lecture-template.md` and fill it in for the topic. Replace every
-placeholder and strip all HTML comments. Default to **focused** depth
-(~400–800 words); with `--deep`, expand each section. Fill the YAML front-matter
+placeholder and strip all HTML comments. Fill the YAML front-matter
 (`title`, `topic`, `date`, `depth`, `tags`). Save to
 `<root>/lectures/<slug>/lecture.md`.
+
+**Write a book chapter, not a cheat sheet.** The reader should be able to learn
+the topic from the lecture alone, the way they would from a good technical book:
+
+- **Explain before you list.** Full paragraphs that say *why* something exists
+  and *what problem it solves* before naming the API or rule. Bullets are only
+  for real lists (options, steps, checklists) and the end-of-chapter summary.
+- **One running example.** Pick a single realistic scenario (in this repo, reuse
+  the matching `fixtures/<scenario>/` data and the lesson's code) and grow it
+  through every section, so each new concept is shown changing something the
+  reader already understands.
+- **Show the real thing.** Concrete requests, responses, payloads and code that
+  the reader can trace by hand, followed by a walkthrough of what to notice.
+- **Show failure, not just success.** For each concept, show the common mistake
+  (the broken payload or code and its symptom) and then the fix.
+- **Define every term** the first time it appears; never assume the vocabulary.
+- **Check yourself** at the end of each concept section: one scenario question
+  with a collapsible answer that explains the reasoning.
+
+**Length follows the subject.** Default (`depth: chapter`): as long as the topic
+needs to be taught properly — a broad, multi-concept topic is typically
+~4,000–6,000 words, a narrow one (a single API flag, one pattern) can be
+~1,500–2,500. Don't pad a narrow topic and don't compress a broad one into
+bullets to hit a number. `--deep` (`depth: deep`): textbook depth, every edge
+case worked through. `--brief` (`depth: brief`): a ~800–1,500 word refresher
+that still uses prose and one example.
 
 **Diagrams.** The notes viewer renders [Mermaid](https://mermaid.js.org) fenced
 code blocks as real diagrams. Whenever a concept is genuinely clearer as a

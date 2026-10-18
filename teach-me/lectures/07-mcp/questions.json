@@ -1,0 +1,182 @@
+{
+  "lectureSlug": "07-mcp",
+  "title": "Part 7 — MCP: resources, tools, scopes and auth",
+  "generatedAt": "2026-10-18T12:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O34"
+      ],
+      "prompt": "An internal knowledge-base MCP server exposes `list_articles` and `get_article(id)`. Traces show the agent spends 2–3 tool calls at the start of every conversation just discovering which articles exist. The articles change weekly. What is the best change?",
+      "options": [
+        "Merge `list_articles` and `get_article` into one `kb_query` tool with an `action` parameter to cut the tool count.",
+        "Add a system prompt rule telling the agent to call `list_articles` at most once per conversation and to reuse the result.",
+        "Expose the articles as MCP resources (an index plus a `kb://articles/{id}` template) so no discovery calls are needed.",
+        "Raise the agent's `maxTurns` so the discovery calls no longer crowd out the turns needed for the actual work."
+      ],
+      "correctIndex": 2,
+      "explanation": "Stable, read-only, browsable content is what resources are for: the application lists and reads them, so no model turns are spent discovering them. Merging the tools still needs exploratory calls, a prompt rule only limits the waste, and more turns treat the symptom."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O34"
+      ],
+      "prompt": "Which of these should be an MCP **tool** rather than a resource?",
+      "options": [
+        "The PostgreSQL schema of the analytics database the agent queries.",
+        "The current status of an order the model identifies mid-conversation.",
+        "The company's refund policy document, updated a few times a year.",
+        "The API reference for the internal billing service, kept in the repository."
+      ],
+      "correctIndex": 1,
+      "explanation": "Live, per-request data whose parameters the model works out during the task is a model-controlled tool. Schemas, policy documents and API references are passive, read-only context: application-controlled resources."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "difficulty": "recall",
+      "objectives": [
+        "O34"
+      ],
+      "prompt": "In the MCP primitive model, who controls each primitive?",
+      "options": [
+        "Tools: the user. Resources: the model. Prompts: the application.",
+        "Tools: the application. Resources: the user. Prompts: the model.",
+        "All three are model-controlled; the host application only renders them.",
+        "Tools: the model. Resources: the application. Prompts: the user."
+      ],
+      "correctIndex": 3,
+      "explanation": "MCP server concepts: tools are model-controlled (the LLM decides when to call them), resources are application-driven context, and prompts are user-invoked templates (for example slash commands)."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": [
+        "O34"
+      ],
+      "prompt": "In Claude Code you can reference an MCP resource in a prompt as `@server:protocol://path`, and Claude Code fetches it and attaches it to the conversation.",
+      "correct": true,
+      "explanation": "For example `@github:issue://123` or `@docs:file://api/authentication`. Resources appear in `@` autocomplete next to files and are fetched automatically when referenced."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O36"
+      ],
+      "prompt": "A support agent has `get_order(order_id)`, `search_orders(customer_email)` and `search_customers(query)`. When users write \"my order A1002 hasn't arrived\", it often calls `search_customers`. What fixes the misrouting most directly?",
+      "options": [
+        "Rewrite each description with what it returns, its input format (e.g. `\"A1002\"`), when to use it, and its sibling.",
+        "Rename the tools to `tool_1`, `tool_2` and `tool_3` so the model is forced to read each input schema more carefully.",
+        "Set `tool_choice` to `get_order` on every turn, so order questions always reach the right tool first.",
+        "Switch to a larger model, which resolves ambiguity between similar tools better without any changes."
+      ],
+      "correctIndex": 0,
+      "explanation": "Descriptions are the main signal the model uses to select a tool. Explicit boundaries and naming the sibling fix routing at the source. Forcing one tool breaks the other cases, and a bigger model doesn't remove the ambiguity."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O36"
+      ],
+      "prompt": "Which description best prevents `search_customers` being used to find orders?",
+      "options": [
+        "\"Search customers and related records quickly. Supports partial matches on names, emails, phone numbers and order numbers.\"",
+        "\"Searches the customer database using fuzzy trigram matching on an indexed column, returning up to 50 rows.\"",
+        "\"Find customer PROFILES by partial name or email. Returns customers, never orders; for orders use search_orders.\"",
+        "\"IMPORTANT!!! Only use this tool when absolutely necessary, and always think carefully before calling it.\""
+      ],
+      "correctIndex": 2,
+      "explanation": "It states what it returns, what it doesn't, the input, and which sibling to use for the neighbouring case. Mentioning order numbers actively invites misrouting, implementation details don't help selection, and urgency without a boundary gives the model nothing to decide with."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O35"
+      ],
+      "prompt": "Your whole team needs the same Sentry MCP server in one repository, and each developer has their own Sentry token. Where and how should it be configured?",
+      "options": [
+        "User scope on each developer's machine, with each personal token written directly into `~/.claude.json`.",
+        "Project scope with one shared team token written into the committed `.mcp.json`, so setup is a single step.",
+        "Local scope for each developer, with README steps describing how to add the server and token manually.",
+        "Project scope: commit `.mcp.json` using `\"Bearer ${SENTRY_TOKEN}\"`; each developer exports `SENTRY_TOKEN`."
+      ],
+      "correctIndex": 3,
+      "explanation": "Project scope shares the server definition through git, and `${VAR}` expansion keeps each person's secret out of the repo. User or local scope aren't shared, and a committed token leaks."
+    },
+    {
+      "id": "q8",
+      "type": "multiple-choice",
+      "difficulty": "recall",
+      "objectives": [
+        "O35"
+      ],
+      "prompt": "`.mcp.json` contains `\"url\": \"${API_BASE_URL:-https://api.example.com}/mcp\"` and `\"Authorization\": \"Bearer ${API_KEY}\"`. Neither variable is set. What happens?",
+      "options": [
+        "Claude Code refuses to load the project's MCP config until both variables are set in the environment.",
+        "The URL uses the default; the header keeps literal `${API_KEY}`, the config loads, and `claude mcp list` warns.",
+        "Both references silently expand to empty strings without any warning, so the server connects without authentication.",
+        "Claude Code prompts for the missing values on startup and saves the answers into `.mcp.json`."
+      ],
+      "correctIndex": 1,
+      "explanation": "`${VAR:-default}` uses the default when the variable is unset. An unset `${VAR}` with no default doesn't block loading: the text stays as written and `claude mcp list` reports a missing-variable warning for that server."
+    },
+    {
+      "id": "q9",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": [
+        "O35"
+      ],
+      "prompt": "An Agent SDK service configures an MCP server named `crm` but Claude never calls its tools, and no error is thrown. What should you check first?",
+      "options": [
+        "The `system` init message: `crm`'s status (`failed`/`needs-auth`), its `mcp__crm__*` tools, and `allowedTools`.",
+        "Whether `permissionMode: 'acceptEdits'` is set, since that mode is what auto-approves MCP tool calls.",
+        "Whether the selected model is large enough to support MCP tools, since smaller models silently skip MCP servers.",
+        "Whether `.mcp.json` sits in the user's home directory, since the SDK only reads MCP config from there."
+      ],
+      "correctIndex": 0,
+      "explanation": "A failed MCP connection doesn't throw. The init message reports each server's status and the discovered tools, and MCP tools also need explicit permission. `acceptEdits` doesn't cover MCP tools."
+    },
+    {
+      "id": "q10",
+      "type": "true-false",
+      "difficulty": "apply",
+      "objectives": [
+        "O35"
+      ],
+      "prompt": "If a server named `jira` is defined both in your local scope and in the project's `.mcp.json`, Claude Code merges the two entries field by field.",
+      "correct": false,
+      "explanation": "Claude Code connects once, using the whole entry from the highest-precedence source: local > project > user > plugin > claude.ai connectors. Fields are not merged across scopes."
+    },
+    {
+      "id": "q11",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O35"
+      ],
+      "prompt": "In the Agent SDK you register the server under the key `my.server`, and it has a tool `list_issues`. Which `allowedTools` entry grants only that server's tools?",
+      "options": [
+        "`mcp__my_server__list_issues`",
+        "`mcp__my.server__*`",
+        "`mcp__my_server__*`",
+        "`mcp__*`"
+      ],
+      "correctIndex": 2,
+      "explanation": "MCP tool names are `mcp__<server>__<tool>`, with characters such as `.` in the server name replaced by `_`, so a pattern that keeps the dot never matches. A per-server wildcard grants exactly that server's tools; naming one tool grants only that tool, and `mcp__*` would grant every MCP server."
+    }
+  ]
+}
