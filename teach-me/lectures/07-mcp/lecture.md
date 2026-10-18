@@ -26,7 +26,7 @@ should have been a resource, rewrite a set of look-alike tool descriptions so th
 `.mcp.json` for scope and secret mistakes. The two lessons that follow have you do each of those in code.
 
 > **Objectives:** O34 MCP resources vs tools · O36 tool descriptions that prevent misrouting · O35 server scope, env-var auth, tool discovery
-> **Lessons:** [L17](../../../lessons/17-mcp-resources-vs-tools/) · [L18](../../../lessons/18-mcp-integration-scope-auth/)
+> **Lessons:** [Lesson 17](../../../lessons/17-mcp-resources-vs-tools/) · [Lesson 18](../../../lessons/18-mcp-integration-scope-auth/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@modelcontextprotocol/sdk` 1.32.1, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
@@ -45,7 +45,7 @@ serves the four **support policies** the agents have to follow (`lessons/17-mcp-
 | `warranty` | Warranty policy | Electronics carry a 2-year warranty. Claims need the order id and a description of the defect. |
 | `account-security` | Account security | Reset emails expire after 1 hour. Never ask for a password. Locked accounts go to a human. |
 
-The first version of the server (the L17 starter) offers five **tools**: `list_policies`, `get_policy`, `get_order`,
+The first version of the server (the Lesson 17 starter) offers five **tools**: `list_policies`, `get_policy`, `get_order`,
 `search_orders` and `search_customers`. Each description is two or three words ("List policies.", "Get order.",
 "Search."). Two things go wrong in production:
 
@@ -54,7 +54,7 @@ The first version of the server (the L17 starter) offers five **tools**: `list_p
    which policy a ticket needs.
 2. The agent mixes up the three data tools. Given "where is my order A1002?", it sometimes calls `search_customers`.
 
-There's a third problem in how the server is wired in (the L18 starter). The team's committed `.mcp.json` contains live
+There's a third problem in how the server is wired in (the Lesson 18 starter). The team's committed `.mcp.json` contains live
 API tokens and one developer's personal notes server, and the production Agent SDK service runs with
 `bypassPermissions` and never checks whether the server connected.
 
@@ -204,7 +204,7 @@ The decision rule:
 
 ### Worked example: the `shop` server, rewritten
 
-Here's the resource half of the L17 solution. The first registration is a direct resource, the index:
+Here's the resource half of the Lesson 17 solution. The first registration is a direct resource, the index:
 
 ```ts
 server.registerResource(
@@ -247,7 +247,7 @@ That's the shape a `resources/read` response has on the wire. The `list` callbac
 `shop://policies/refunds`, `shop://policies/shipping` and so on, rather than only the template. And `complete` lets a
 client autocomplete the `{topic}` parameter. With these registered, `list_policies` and `get_policy` are deleted.
 
-On the host side, reading a resource is one protocol call, and no model turn is involved. This is L17's
+On the host side, reading a resource is one protocol call, and no model turn is involved. This is Lesson 17's
 `loadPolicyContext`:
 
 ```ts
@@ -263,7 +263,7 @@ export async function loadPolicyContext(client: Client, topics: string[]): Promi
 }
 ```
 
-The L17 tests check exactly this: after `loadPolicyContext`, the server has seen `resources/read` requests and **no**
+The Lesson 17 tests check exactly this: after `loadPolicyContext`, the server has seen `resources/read` requests and **no**
 `tools/call`.
 
 In **Claude Code**, resources appear in the `@` autocomplete and can be referenced as `@server:protocol://path`, for
@@ -331,7 +331,7 @@ the neighbour draws the boundary explicitly.
 
 ### Worked example: the three descriptions, rewritten
 
-From the L17 solution:
+From the Lesson 17 solution:
 
 ```ts
 server.registerTool('get_order', {
@@ -442,7 +442,7 @@ claude mcp get <name>    # one server's details
 
 ### Worked example: sorting the team's servers
 
-L18's `chooseScope` encodes the decision:
+Lesson 18's `chooseScope` encodes the decision:
 
 ```ts
 export function chooseScope(need: { sharedWithTeam: boolean; acrossAllProjects: boolean }): Scope {
@@ -486,7 +486,7 @@ server" scenario, and the fix is to move the server to project scope, not to wri
 
 ### The problem
 
-Project scope means `.mcp.json` is committed. Here's what the L18 starter's `.mcp.json` looks like:
+Project scope means `.mcp.json` is committed. Here's what the Lesson 18 starter's `.mcp.json` looks like:
 
 ```json
 {
@@ -554,7 +554,7 @@ Notice what changed. Both tokens are references now. The URL uses a default, so 
 anything, while someone testing a staging server can set `SHOP_MCP_URL`. And `ana-notes` is gone: it moves to Ana's user
 or local scope.
 
-L18's `expandEnv` implements the same rules, so you can see them exactly:
+Lesson 18's `expandEnv` implements the same rules, so you can see them exactly:
 
 ```ts
 export function expandEnv(value: string, env: Record<string, string | undefined>): { value: string; missing: string[] } {
@@ -624,7 +624,7 @@ unusable. `pending` can just mean the server is still connecting or that a cache
 failure by itself. Use `mcpServerStatus()` to check again later.
 
 **At the protocol level.** Any MCP client can call `tools/list` and compare the result with the tools you expect. This
-is how L17 and L18 test the server offline.
+is how Lesson 17 and Lesson 18 test the server offline.
 
 **In Claude Code.** `claude mcp list` shows each server's health, and `/mcp` inside a session shows status and tools. A
 tool whose full name is longer than 128 characters, or whose schema is invalid, is left out, and the reason is logged.
@@ -632,7 +632,7 @@ MCP tool results are capped at 25,000 tokens by default (configurable with `MAX_
 
 ### Worked example: the Agent SDK service, fixed
 
-L18's `agentOptions` builds the options for the production service:
+Lesson 18's `agentOptions` builds the options for the production service:
 
 ```ts
 export function agentOptions(env: Record<string, string | undefined>): Options {

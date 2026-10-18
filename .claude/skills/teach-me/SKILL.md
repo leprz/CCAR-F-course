@@ -132,6 +132,9 @@ the topic from the lecture alone, the way they would from a good technical book:
 - **Show failure, not just success.** For each concept, show the common mistake
   (the broken payload or code and its symptom) and then the fix.
 - **Define every term** the first time it appears; never assume the vocabulary.
+  Spell out abbreviations and internal shorthand (write "Lesson 3", not "L03";
+  "purchase order number", not just "PO"), or gloss them once in parentheses at
+  the first mention. Keep that gloss to a few words.
 - **Check yourself** at the end of each concept section: one scenario question
   with a collapsible answer that explains the reasoning.
 

@@ -23,7 +23,7 @@ By the end of this chapter you'll be able to write a tool-use loop by hand, expl
 the classic failure modes from their symptoms. The two lessons that follow have you build exactly that.
 
 > **Objectives:** O01 parallel tool calls · O27 tool use + JSON schema, `tool_choice` to guarantee invocation · O37 `tool_choice` + sequencing dependent tools
-> **Lessons:** [L01](../../../lessons/01-tool-loop-and-tool-choice/) · [L02](../../../lessons/02-parallel-tool-calls/)
+> **Lessons:** [Lesson 1](../../../lessons/01-tool-loop-and-tool-choice/) · [Lesson 2](../../../lessons/02-parallel-tool-calls/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0.
 
 ## The running example
@@ -751,7 +751,7 @@ step-by-step audit trail. It trades latency for control.
 ## 7. Putting it together
 
 Here's ticket T-100 one more time, end to end, with every idea from this chapter in place. (You'll write this code
-yourself in L01 and L02, so this is the narrated run rather than the full solution.)
+yourself in Lesson 1 and Lesson 2, so this is the narrated run rather than the full solution.)
 
 1. **Setup.** The request has the system prompt ("Investigate with the tools, then call record_triage. Only batch
    tool calls that are independent of each other."), three tools with full descriptions, and `record_triage`'s

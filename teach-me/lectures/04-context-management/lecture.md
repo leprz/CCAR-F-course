@@ -23,10 +23,10 @@ gets compressed, what gets written to disk, and what a later session should re-c
 By the end of this chapter you'll be able to keep a long conversation inside a token budget without losing exact
 values, explain why a summary alone is not enough, split work that's too big for one context across isolated subagents
 and scratchpad files, and resume a multi-session task without redoing finished work or trusting stale results. Lessons
-L09 and L10 have you build each of these.
+Lesson 9 and Lesson 10 have you build each of these.
 
 > **Objectives:** O21 context window optimization (summarization, sliding windows, structured state, selective retention) · O20 context across sessions (subagent isolation, scratchpad files, targeted reads) · O02 session resumption (targeted re-analysis of changed files, context injection)
-> **Lessons:** [L09](../../../lessons/09-context-window-optimization/) · [L10](../../../lessons/10-cross-session-context/)
+> **Lessons:** [Lesson 9](../../../lessons/09-context-window-optimization/) · [Lesson 10](../../../lessons/10-cross-session-context/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
@@ -34,7 +34,7 @@ L09 and L10 have you build each of these.
 This chapter follows two problems that the lessons use. The first lives inside one conversation; the second spans
 several sessions.
 
-**A long support chat (L09).** Ben Kowalski, the customer from Part 1, opens a chat about ticket T-100: he was charged
+**A long support chat (Lesson 9).** Ben Kowalski, the customer from Part 1, opens a chat about ticket T-100: he was charged
 twice for his laptop. The first six messages settle everything that matters:
 
 | Turn | Who | What it establishes |
@@ -50,7 +50,7 @@ he comes back to the point: *"So when exactly will I get my money back, and how 
 needs `$899.99`, `RF-7731` and "5 business days" from turns 4–6, while thirty-odd turns of small talk sit in between.
 The lesson's `conversation.ts` generates exactly this history, with the padding length as a parameter.
 
-**A code review that outgrows one session (L10).** A review agent checks *Ledgerly*, a small order-and-billing service in
+**A code review that outgrows one session (Lesson 10).** A review agent checks *Ledgerly*, a small order-and-billing service in
 `fixtures/codebase/`, against its `CONVENTIONS.md`. The service has about fifteen source files: routes
 (`src/routes/orders.ts`, `src/routes/invoices.ts`), services (`billingService.ts`, `orderService.ts`), repositories,
 `auth.ts`, `config.ts`, utilities and a frozen `src/legacy/` folder. The conventions say things like "all amounts are
@@ -114,7 +114,7 @@ history is small talk, and the three facts the final question depends on sit nea
 has gone wrong yet; everything still fits. But every request now pays for all of it, and the model has to pick out
 `$899.99` and "5 business days" from a page of noise.
 
-L09 makes this concrete with a budget. `manageContext` builds the full request, counts it, and only acts when the count
+Lesson 9 makes this concrete with a budget. `manageContext` builds the full request, counts it, and only acts when the count
 is over budget:
 
 ```ts
@@ -173,7 +173,7 @@ the window.
 Where you cut matters as much as how much you keep. The API has structural rules about history (Part 1): a
 `tool_result` must directly follow the assistant turn that contains its `tool_use`, and the conversation must start with a
 user message. A cut in the wrong place breaks both. The safe rule is to cut only at a **human-turn boundary**: a user
-message that is real user input, not a message carrying tool results. L09 implements it like this:
+message that is real user input, not a message carrying tool results. Lesson 9 implements it like this:
 
 ```ts
 /** A human turn starts with a user message that is not just tool results. */
@@ -194,7 +194,7 @@ export function slidingWindow(messages: MessageParam[], keepTurns: number) {
 Because `cut` is always the index of a human turn, `recent` always starts with a user message, and a `tool_use` and its
 `tool_result` always end up on the same side of the cut.
 
-The summary itself needs instructions, and the most important one is about exact values. L09's summarizer prompt:
+The summary itself needs instructions, and the most important one is about exact values. Lesson 9's summarizer prompt:
 
 ```text
 Summarize the support conversation below for the agent who will continue it. Preserve exactly, never paraphrased
@@ -238,7 +238,7 @@ progressive summarization rewrites the previous summary again. Over several comp
 "about $900" and "within 5 business days" towards "soon". Section 3 is the fix.
 
 **Summarizing a conversation that fits.** Each summary is an extra model call, adds latency, and throws away detail.
-L09 leaves short histories untouched; compaction only runs when the budget is actually exceeded.
+Lesson 9 leaves short histories untouched; compaction only runs when the budget is actually exceeded.
 
 > **Check yourself:** After a refactor, a chat agent occasionally fails with a 400 that mentions `tool_use` ids without
 > `tool_result` blocks, but only in long conversations. The refactor changed the trimming code to "keep the last 12
@@ -265,7 +265,7 @@ can't live only in prose.
 
 Keep the critical facts in a **structured state object**: a small JSON record, separate from the summary, merged turn by
 turn and injected into every request. It's the agent's equivalent of the case notes a human support agent keeps next to
-the chat window. L09's version:
+the chat window. Lesson 9's version:
 
 ```ts
 export interface CaseState {
@@ -302,7 +302,7 @@ export function mergeState(state: CaseState, extracted: CaseState): CaseState {
 ```
 
 How do the facts get extracted from the older turns in the first place? With the technique from Part 1: a tool whose
-schema is the state shape, forced with `tool_choice`, so the result is parsed JSON rather than prose. L09's
+schema is the state shape, forced with `tool_choice`, so the result is parsed JSON rather than prose. Lesson 9's
 `record_case_facts` tool tells the model to "copy values exactly as written; never round or paraphrase". (On models that
 reject forced `tool_choice`, such as Opus and Sonnet 5.5, use structured outputs or `strict` + `auto` for the same
 guarantee; see Parts 1 and 2.)
@@ -409,7 +409,7 @@ what to read next.
 
 **Scratchpad files.** A context window doesn't persist; files do. Write findings, decisions and a to-do list to disk
 as you go (a `review.json`, a `progress.md`), so the next session, a teammate or a subagent starts from them. Design the
-file for **fast recovery**: structured, current and small. L10's scratchpad:
+file for **fast recovery**: structured, current and small. Lesson 10's scratchpad:
 
 ```ts
 export interface Scratchpad {
@@ -436,7 +436,7 @@ the start of every session. Apart from that, sessions are independent; each star
 
 ### Worked example: reviewing Ledgerly file by file
 
-L10's `analyzeFile` is the isolated unit of work. Each call is a **separate request** containing one file, the
+Lesson 10's `analyzeFile` is the isolated unit of work. Each call is a **separate request** containing one file, the
 conventions, and nothing else:
 
 ```ts
@@ -609,7 +609,7 @@ the analyzer to re-verify catches both outcomes: fixed issues disappear, survivi
 
 Here are both running examples one last time, with every idea from this chapter in place.
 
-**Ben's chat (L09).** On every turn, `manageContext` builds the request with the current `CaseState` in the system
+**Ben's chat (Lesson 9).** On every turn, `manageContext` builds the request with the current `CaseState` in the system
 prompt and counts it with the token counting API (section 1). While it fits, nothing changes. When Ben's final question
 pushes it over budget:
 
@@ -627,7 +627,7 @@ pushes it over budget:
 Claude answers with "$899.99", refund case RF-7731 and "within 5 business days", because those values are in the
 system prompt verbatim, not because the summary happened to keep them.
 
-**The Ledgerly review (L10).** Day one: `planResume` finds no scratchpad, so every file goes to `toAnalyze`. Each file is
+**The Ledgerly review (Lesson 10).** Day one: `planResume` finds no scratchpad, so every file goes to `toAnalyze`. Each file is
 reviewed in its own isolated request with the conventions and a forced `report_findings` tool (section 4). Findings and
 content hashes are saved atomically. Day two: hashes show two changed files; only those are re-analyzed, with their old
 findings passed in to re-verify; the other findings are carried; the new scratchpad is saved; and the main session

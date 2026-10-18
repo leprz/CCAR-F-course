@@ -27,7 +27,7 @@ source-level uncertainty visible. Your two lowest-scoring objectives from the la
 uncertainty-preserving synthesis (O19), get two full sections each.
 
 > **Objectives:** O10 orchestration patterns · O07 dynamic decomposition · O09 state persistence for multi-agent pipelines · O19 synthesis that preserves uncertainty
-> **Lessons:** [L14](../../../lessons/14-orchestration-patterns-and-dynamic-decomposition/) · [L15](../../../lessons/15-pipeline-state-persistence/) · [L16](../../../lessons/16-synthesis-preserving-uncertainty/)
+> **Lessons:** [Lesson 14](../../../lessons/14-orchestration-patterns-and-dynamic-decomposition/) · [Lesson 15](../../../lessons/15-pipeline-state-persistence/) · [Lesson 16](../../../lessons/16-synthesis-preserving-uncertainty/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example

@@ -27,7 +27,7 @@ to configure a read-only multi-pass review, choose between plan mode and direct 
 is safe to run unattended, and get Claude to explore and test a codebase economically.
 
 > **Objectives:** O16 choose the config mechanism · O14 `context: fork` · O13 review configurations · O24 specialised review passes · O30 cutting false positives with persistent conventions · O08 plan mode vs direct vs multi-phase · O11 CLI in CI/CD · O32 choosing Grep/Glob/Read/Bash · O17 systematic exploration · O15 test-generation quality
-> **Lessons:** [L19](../../../lessons/19-config-mechanisms-and-context-fork/) · [L20](../../../lessons/20-review-configs-and-specialized-passes/) · [L21](../../../lessons/21-plan-mode-workflows-and-ci/) · [L22](../../../lessons/22-exploration-tools-and-test-generation/)
+> **Lessons:** [Lesson 19](../../../lessons/19-config-mechanisms-and-context-fork/) · [Lesson 20](../../../lessons/20-review-configs-and-specialized-passes/) · [Lesson 21](../../../lessons/21-plan-mode-workflows-and-ci/) · [Lesson 22](../../../lessons/22-exploration-tools-and-test-generation/)
 > **Sources checked:** 2026-10-18 against code.claude.com/docs (links in *Going deeper*) and Claude Code 2.1.302 (`claude --help`).
 
 ## The running example
@@ -386,7 +386,7 @@ Return only JSON: {"findings": [{"category": "security", "severity": "...", "fil
 Notice the description's quotes: it contains `: `, which a YAML parser would otherwise read as a nested mapping.
 "Use proactively" is the phrase the docs recommend to encourage Claude to delegate to a subagent on its own.
 
-In L20 you build the same thing on the Messages API: three requests, run concurrently, each with system prompt =
+In Lesson 20 you build the same thing on the Messages API: three requests, run concurrently, each with system prompt =
 focus + conventions + examples, and `tool_choice` forcing `report_findings`. Merging then drops any finding whose
 category doesn't match its pass and de-duplicates by category, file and line. Scored against `ISSUES.md`, the target
 is high recall on SEC/BIZ/API and **zero** OK-* findings.
@@ -553,7 +553,7 @@ servers with no trust dialog, which matters when CI runs on code from forks.
 ```
 
 Read the gate carefully: a run that hits `--max-turns` produces a result with `subtype: "error_max_turns"`. That is
-a **failed** step, not a review with no findings. L21's `interpretResult` encodes the same rule in TypeScript, using
+a **failed** step, not a review with no findings. Lesson 21's `interpretResult` encodes the same rule in TypeScript, using
 the Agent SDK's own `SDKResultMessage` type so that a renamed field would fail to compile.
 
 ### What goes wrong
@@ -721,7 +721,7 @@ skill. A model told to "make the tests pass" would happily change 1800 to 2000.
 
 The usual mistakes: asking for "100% coverage" (which rewards trivial assertions), letting the model compute
 expected values by running the code (which bakes the bug into the test), giving no existing tests (so you get new
-fixture helpers in every file), and accepting the output unread. A cheap automated gate helps. L22's `isTrivialTest`
+fixture helpers in every file), and accepting the output unread. A cheap automated gate helps. Lesson 22's `isTrivialTest`
 flags any test file with no behaviour-pinning assertion before a human spends time on it.
 
 > **Check yourself:** Claude's generated tests for `splitInstalments` all assert `expect(result).toHaveLength(parts)`.
