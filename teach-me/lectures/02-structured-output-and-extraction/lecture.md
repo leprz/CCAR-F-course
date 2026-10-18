@@ -25,7 +25,7 @@ that lets the model say "not in the document", add the accuracy patterns that ma
 doesn't fit, and run a refinement loop that converges. The four lessons that follow have you build each piece.
 
 > **Objectives:** O25 choose the output method · O26 extraction schemas that don't force fabrication · O29 accuracy patterns · O31 inclusion and exclusion criteria · O28 truncation by splitting · O12 iterative refinement
-> **Lessons:** [L03](../../../lessons/03-structured-output-and-extraction-schema/) · [L04](../../../lessons/04-extraction-accuracy-and-criteria/) · [L05](../../../lessons/05-truncation-split-and-merge/) · [L06](../../../lessons/06-iterative-refinement/)
+> **Lessons:** [Lesson 3](../../../lessons/03-structured-output-and-extraction-schema/) · [Lesson 4](../../../lessons/04-extraction-accuracy-and-criteria/) · [Lesson 5](../../../lessons/05-truncation-split-and-merge/) · [Lesson 6](../../../lessons/06-iterative-refinement/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0 (`output_config.format`).
 
 ## The running example
@@ -100,13 +100,35 @@ Haiku 5.5. (Older code used a top-level `output_format` parameter; it's deprecat
 structured outputs existed, and it's still the classic exam answer to "guarantee structured output". Remember Part 1's
 caveat, though: Opus 5.5, Sonnet 5.5 and Fable 5.1 reject forced `tool_choice` with a 400 error.
 
-**Prompt only** means instructions plus an example of the JSON. There is no guarantee at all. It's fine when best
-effort is acceptable and you have a parse-and-retry fallback.
+**Prompt only** means you describe the JSON in the prompt and show an example, and nothing else:
 
-**Prefill** means starting the assistant turn yourself with `{`, so the model continues from there. It only seeds the
-first tokens; it guarantees nothing about the rest. And on current models it isn't even available: prefilling the
-last assistant turn returns a **400 error on Claude 4.6 and later models**, which includes the whole 5.x family.
-Treat it as a legacy technique you need to recognise, never as "the most reliable" option.
+```ts
+const prompt = `Extract the invoice below. Reply with JSON only, like this:
+{"vendor_name": "Acme Office Supply Inc.", "invoice_number": "10234", "total_amount": 1245.5}
+
+${documentText}`;
+```
+
+Nothing enforces it, so the reply may come back as `Here's the JSON: {…}`, with a missing field, or with
+`"total_amount": "1,245.50"` as a string. That's acceptable only when best effort is good enough and your code has a
+fallback: try `JSON.parse` and validate, and if that fails, send the error back and ask again.
+
+**Prefill** means you write the first characters of Claude's reply yourself. You end the `messages` array with an
+`assistant` message containing just `{`, and the model carries on writing from that point:
+
+```ts
+messages: [
+  { role: 'user', content: prompt },
+  { role: 'assistant', content: '{' }, // the reply "starts" here
+]
+// the model continues with:  "vendor_name": "Acme Office Supply Inc.", ...}
+// your code glues it back:    JSON.parse('{' + reply)
+```
+
+The trick stops Claude from opening with "Here's the JSON:", because the reply has already started inside the object.
+That's all it does: the rest can still have a missing field or a wrong type. On current models you can't use it at all.
+Ending the request with an assistant message returns a **400 error on Claude 4.6 and later**, including every 5.x
+model. You need to recognise it in old code, but it's never the right answer for "most reliable".
 
 | Method | How | Guarantee | Use when |
 |--------|-----|-----------|----------|
@@ -120,7 +142,7 @@ The decision rule is: **pick the strictest method the model supports that the us
 
 ### Worked example: extracting `INV-1`
 
-Here is the request the L03 solution builds for Acme's invoice (schema shortened):
+Here is the request the Lesson 3 solution builds for Acme's invoice (schema shortened):
 
 ```json
 {
@@ -165,7 +187,7 @@ export function parseExtraction(message: Message): InvoiceExtraction {
 }
 ```
 
-The choice of method is itself code in L03. Given how strict the need is and what the model supports, it returns the
+The choice of method is itself code in Lesson 3. Given how strict the need is and what the model supports, it returns the
 most reliable option:
 
 ```ts
@@ -182,7 +204,7 @@ Prefill never appears as an answer: it can't guarantee anything, and the current
 
 ### What goes wrong
 
-**Prefill on a current model.** The L03 starter sends an assistant turn of `"{"` to "help" the model start with JSON.
+**Prefill on a current model.** The Lesson 3 starter sends an assistant turn of `"{"` to "help" the model start with JSON.
 On any Claude 4.6+ model the whole request fails with a 400 error before a single token is generated. The fix is to
 delete the prefill and use `output_config.format`.
 
@@ -254,7 +276,7 @@ isn't guaranteed, so compare enum values case-insensitively downstream.
 
 ### Worked example: the schema, and `INV-5`
 
-These are the fields from the L03 solution that matter here:
+These are the fields from the Lesson 3 solution that matter here:
 
 ```json
 {
@@ -310,7 +332,7 @@ one way, return null for it and list the field in ambiguous_fields."*
 
 **A constraint structured outputs rejects.** A well-meaning schema adds `"total_amount": { "type": "number",
 "minimum": 0 }` to stop negative totals. The request fails with a 400 error, because `minimum` isn't supported. (It
-would also have been wrong: credit notes like `INV-3` are negative.) L03 has you write `findUnsupportedKeywords`,
+would also have been wrong: credit notes like `INV-3` are negative.) Lesson 3 has you write `findUnsupportedKeywords`,
 which walks a schema and reports such problems before the API does:
 
 ```text
@@ -384,13 +406,13 @@ should be negative. Check them deterministically after extraction. Code is cheap
 
 **4. Retry with the specific error, then route to a human.** When validation fails, don't just ask again. Send the
 model its own output plus the exact failure ("total_amount 1.23456 does not equal the sum of line item amounts
-1234.56") and ask it to re-read the document. Cap the retries (L04 uses 2 attempts). Whatever still fails is not
+1234.56") and ask it to re-read the document. Cap the retries (Lesson 4 uses 2 attempts). Whatever still fails is not
 discarded and not force-accepted: it's returned as an open issue so a human can resolve it (Part 3 builds that
 routing).
 
 ### Worked example: `INV-2`, from wrong to right
 
-First, picking the few-shot examples. L04's `selectFewShotExamples` uses each fixture's `traits` and greedily picks the
+First, picking the few-shot examples. Lesson 4's `selectFewShotExamples` uses each fixture's `traits` and greedily picks the
 document that covers the most traits not yet covered, never the target. For the target `INV-5` and `n = 3`:
 
 | Step | Pick | New traits it covers |
@@ -475,7 +497,7 @@ safe alternative ("don't compute due dates") still leaves the model with a requi
 so it's under pressure to fill the gap anyway. "Output null and keep the terms in `payment_terms`" removes the
 pressure.
 
-L04's solution keeps the boundaries as data and renders them into tagged prompt sections:
+Lesson 4's solution keeps the boundaries as data and renders them into tagged prompt sections:
 
 ```ts
 export const SCOPE: Scope = {
@@ -799,7 +821,7 @@ make the cost predictable.
 
 ## 7. Putting it together
 
-Here's the whole inbox flowing through the pipeline you build in L03–L06, with each idea in its place.
+Here's the whole inbox flowing through the pipeline you build in Lessons 3–6, with each idea in its place.
 
 1. **Method.** `chooseOutputMethod({ strictness: 'guaranteed', model: 'claude-haiku-5-5' })` returns
    `'json_outputs'`, so every request uses `output_config.format`. No prefill, no prompt-only JSON (section 1).
