@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T08:07:57Z",
+  "generatedAt": "2026-10-19T08:47:34Z",
   "lectures": [
     {
       "slug": "01-agentic-loop-and-tool-use",
@@ -202,7 +202,7 @@
       "topic": "Claude Code configuration mechanisms, review setups, plan mode, CI, exploration and test generation",
       "date": "2026-10-18",
       "depth": "chapter",
-      "questionCount": 0,
+      "questionCount": 18,
       "tags": [
         "cca-f",
         "part-8",
@@ -225,7 +225,18 @@
         "O30",
         "O32"
       ],
-      "objectives": [],
+      "objectives": [
+        "O08",
+        "O11",
+        "O13",
+        "O14",
+        "O15",
+        "O16",
+        "O17",
+        "O24",
+        "O30",
+        "O32"
+      ],
       "notesPath": "lectures/08-claude-code-configuration/lecture.md",
       "quizUrl": "quiz.html?lecture=08-claude-code-configuration"
     }

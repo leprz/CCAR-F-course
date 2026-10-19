@@ -209,7 +209,7 @@ a prompt that:
   the current ISO timestamp.
 - **Tags every question with `objectives`** (e.g. `["O27", "O37"]`) when the
   lecture covers exam objectives: pass the subagent the objective IDs + short
-  names the lecture's sections are tagged with (from `plan.md`'s objectives
+  names the lecture's sections are tagged with (from `OBJECTIVES.md`'s objectives
   table) and require at least one ID per question, only from that list. Aim
   for every listed objective to get at least two questions. The field is
   optional in the schema, so ad-hoc lectures without objectives stay valid.

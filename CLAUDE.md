@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A study repo for the **Claude Certified Architect – Foundations** exam. The learner failed a first attempt (481/720). The repo
 pairs topic lectures with hands-on TypeScript lessons and quizzes, all mapped to 37 exam objectives (O01–O37).
 
-- `plan.md`: decisions, the objective list with last scores, and the 8 parts / 22 lessons. **Read it before adding content.**
-- `progress.md`: live status. **Update it whenever a step finishes**, so work can resume in a fresh session.
+- `OBJECTIVES.md`: the 37 objectives and the 8 parts / 22 lessons they map to. **Read it before adding content.**
+- All 22 lessons, 8 lectures and 8 quizzes are built. The build tracker (`plan.md`, `progress.md`) was retired on 2026-10-19;
+  open items are under *Known gaps* below.
 
 ## Commands
 
@@ -66,5 +67,18 @@ or run `bash .claude/skills/teach-me/scripts/serve.sh teach-me` and open `index.
   the classic pattern the exam tests (for example forced `tool_choice` on 5.5 models), teach both and say which is which.
 - SDK versions are pinned exactly in `package.json`. Use the SDK's real types so outdated field names fail `tsc`.
 - A lesson is done only when `npm run gate -- NN` passes, `npm run typecheck` passes, the README/WHY/lecture/quiz exist, and
-  `progress.md` is updated. Run the live test when a key is available, and record it in `progress.md` if not.
+  *Known gaps* is updated. Run the live test when a key is available, and record it under *Known gaps* if not.
 - `package.json` is `"type": "module"`. The portal's `site/app.js` is a browser script, so node can't `require` it from inside the repo.
+
+## Known gaps
+
+- No live test has run yet (no `ANTHROPIC_API_KEY` on this machine). L01, L14, L15 and L20 force `tool_choice`, so they need
+  Haiku 5.5, not Opus/Sonnet 5.5. The L02 live test asserts `avgPerMessage > 1`; loosen it if Haiku doesn't batch reliably.
+  Part 8 live tests run `claude -p` in temp copies of the sandboxes.
+- Unverified: Part 7's claims about token rotation and remote `url`/`headers` reading some keys as empty; Part 5's example
+  `Agent` tool_use input including `description`; the Part 8 prettier hook and `` ```! `` skill blocks (never executed);
+  Mermaid diagrams in the portal.
+- The portal was tested with jsdom, not a real browser. Check `exam.html` styling and the progress download in Chrome.
+- Quiz scores live in browser localStorage per portal port. Export progress before the port changes.
+- Nested `CLAUDE.md` / `.claude/` files under `lessons/19-22/*/sandbox/` can load on demand when Claude Code reads files
+  there. Harmless, but expected.

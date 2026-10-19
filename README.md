@@ -60,7 +60,7 @@ sample document in a popup, so you can read the invoice or ticket the chapter is
 | 7 | MCP | L17 resources vs tools · L18 server scope, auth, discovery |
 | 8 | Claude Code configuration | L19 config mechanisms and `context: fork` · L20 review configs · L21 plan mode and CI · L22 exploration and test generation |
 
-The objectives behind each lesson are listed in [`plan.md`](plan.md).
+The objectives behind each lesson are listed in [`OBJECTIVES.md`](OBJECTIVES.md).
 
 ## Commands
 
@@ -86,7 +86,7 @@ teach-me/               the study portal: lectures/<part>/lecture.md + questions
 lib/                    loadLesson, MessageCreator, FakeClient/RecordingClient for tests
 scripts/                gate.ts (the quality gate)
 .claude/skills/teach-me the teach-me skill that builds and serves the portal
-plan.md, progress.md    decisions and current status
+OBJECTIVES.md           the 37 exam objectives and the lessons that cover them
 CLAUDE.md               guidance for Claude Code when working on this repo
 ```
 

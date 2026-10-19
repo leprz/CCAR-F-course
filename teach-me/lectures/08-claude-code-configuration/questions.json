@@ -1,0 +1,253 @@
+{
+  "lectureSlug": "08-claude-code-configuration",
+  "title": "Part 8 — Configuring Claude Code",
+  "generatedAt": "2026-10-19T12:00:00Z",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O16"],
+      "prompt": "A team's `CLAUDE.md` says \"NEVER read `.env` files, they contain live credentials.\" Audit logs show Claude still read `.env` in two sessions last month. What change makes the rule hold?",
+      "options": [
+        "Move the line to the top of `CLAUDE.md`, capitalise it, and repeat it in a nested `CLAUDE.md` at the repository root.",
+        "Add `Read(./.env)` and `Read(./.env.*)` to `permissions.deny` in the project's `.claude/settings.json`.",
+        "Create a `.claude/rules/secrets.md` rule with `paths: [\".env*\"]` that restates the prohibition in detail.",
+        "Write a `secrets` skill with `user-invocable: false` so Claude loads the prohibition as background knowledge."
+      ],
+      "correctIndex": 1,
+      "explanation": "This is an access rule, so it belongs in permissions: Claude Code enforces deny rules itself, in every mode, and the model can't talk its way around them. Louder or repeated `CLAUDE.md` text is still advice. A path-scoped rule loads only *after* Claude reads a matching file, which is too late, and it is advice too. A background skill is advice that may not even be loaded."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O16"],
+      "prompt": "Ledgerly's `CLAUDE.md` holds 40 lines of HTTP route conventions (no verbs in paths, `httpError` for every error, `authorize` before customer data). They only matter for files under `src/routes/`, but they sit in context while Claude edits the logger. Where should they go?",
+      "options": [
+        "A `PreToolUse` hook on `Edit|Write` that rejects any edit under `src/routes/` breaking one of the conventions.",
+        "A skill named `route-rules` with `context: fork`, so the conventions are applied in an isolated subagent.",
+        "A `routes` subagent whose system prompt holds the conventions and whose `tools` list allows `Edit` only.",
+        "A `.claude/rules/http-routes.md` file with `paths: [\"src/routes/**/*.ts\"]` in its frontmatter."
+      ],
+      "correctIndex": 3,
+      "explanation": "Guidance that applies to part of the codebase is a path-scoped rule: it loads when Claude reads or edits a matching file and stays out of context otherwise. A hook can't judge conventions like naming and would fight every edit. A forked skill needs a task, and a list of conventions isn't one. A dedicated subagent would split route editing out of the normal session for no gain."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": ["O16"],
+      "prompt": "With `\"deny\": [\"Read(./.env.*)\"]` and `\"allow\": [\"Read(./.env.example)\"]` in the same settings file, Claude can read `.env.example`, because the more specific allow rule wins.",
+      "correct": false,
+      "explanation": "Permission rules are evaluated deny → ask → allow, and the first match wins regardless of specificity. `.env.example` matches the deny rule, so it's blocked. An allow rule can't carve an exception out of a broader deny; you narrow the deny pattern instead."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O14"],
+      "prompt": "A `/summarize-pr` skill reads the diff, the linked issue and the CI logs, then writes a two-line summary. After running it, developers find their session sluggish and Claude starts forgetting earlier instructions. Which change fixes this?",
+      "options": [
+        "Add `context: fork` (with `agent: Explore`) and make the body find the PR itself, for example from `$ARGUMENTS`.",
+        "Add `disable-model-invocation: true` so the skill only runs when a developer types `/summarize-pr` on purpose.",
+        "Tell developers to run `/compact` straight after `/summarize-pr` so the raw diff and logs get summarised away.",
+        "Move the skill's body into `CLAUDE.md` so its instructions are already loaded and no longer injected per run."
+      ],
+      "correctIndex": 0,
+      "explanation": "`context: fork` runs the skill in a subagent: the diff, issue and logs stay in its context and only the summary comes back. Because the fork doesn't see the conversation, the body must be self-contained. Limiting who invokes it doesn't reduce what it reads. `/compact` treats the symptom after the damage. Putting it in `CLAUDE.md` costs tokens in every session and still reads everything inline."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O14"],
+      "prompt": "A team added `context: fork` to `money-style`, a skill whose body is a list of money-handling conventions (integer cents, round once, tax after discount). Now invoking it returns a polite summary of the rules and nothing else. What is the right fix?",
+      "options": [
+        "Change `agent:` from the default to `Explore` so the fork can search the codebase for money code to check.",
+        "Add `background: false` so the caller waits for the fork and receives its full output instead of a summary.",
+        "Remove `context: fork` so the conventions are injected inline, optionally adding `user-invocable: false`.",
+        "Add more conventions and examples to the body so the forked subagent has enough material to produce output."
+      ],
+      "correctIndex": 2,
+      "explanation": "A fork's body becomes the subagent's whole prompt, and a list of guidelines has no task, so the subagent can only summarise it. Guideline skills should run inline, where they shape the work in the current conversation. Changing the agent type or waiting for the result doesn't give it a task, and more guidelines make the same problem bigger."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O13"],
+      "prompt": "A `reviewer` subagent has `permissionMode: plan` in its frontmatter and no `tools` field. The main session runs with `acceptEdits`. During reviews the subagent sometimes edits files, and once it ran `npm install`. What is the reliable fix?",
+      "options": [
+        "Change the subagent's `permissionMode` from `plan` to `dontAsk` so anything not pre-approved is denied.",
+        "Add \"You are read-only: never edit files or run commands\" at the top of the subagent's system prompt.",
+        "Run the main session in plan mode whenever a review happens so the subagent inherits the plan-mode blocks.",
+        "Add `tools: Read, Grep, Glob` to the frontmatter so the subagent no longer inherits Edit, Bash and MCP tools."
+      ],
+      "correctIndex": 3,
+      "explanation": "Omitting `tools` means the subagent inherits every tool, and a subagent's `permissionMode` is ignored when the parent runs in `bypassPermissions`, `acceptEdits` or auto mode. An explicit allowlist is the constraint that holds. Another `permissionMode` has the same problem, a prompt line is advice, and changing how humans run the main session isn't a configuration fix."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O24"],
+      "prompt": "A single review prompt asks Claude to find \"security, business-logic and API-design problems\". It reliably catches naming and API issues but keeps missing a route with no authorization check. What change improves recall on all three concerns?",
+      "options": [
+        "Three focused passes, each naming its concern, saying what to ignore and carrying its own few-shot examples.",
+        "Keep one prompt but add \"be extremely thorough, especially about security\" and raise `max_tokens` to 8,000.",
+        "Keep one prompt and run it three times with different temperatures, then take the union of the findings.",
+        "Keep one prompt but ask for findings sorted by severity so the security issues reach the top of the list."
+      ],
+      "correctIndex": 0,
+      "explanation": "One prompt covering several concerns spreads attention and examples thin, and the most salient concern crowds out the rest. Separate passes with their own few-shots give each concern full focus. \"Be thorough\" makes the list longer, not better balanced. Re-running the same prompt repeats the same blind spot. Sorting reorders findings the model never produced."
+    },
+    {
+      "id": "q8",
+      "type": "true-false",
+      "difficulty": "apply",
+      "objectives": ["O24", "O30"],
+      "prompt": "In a specialised security review pass, including a few-shot example that *looks* suspicious but is fine (for example `Math.random()` for a log correlation id → no finding) helps cut false positives.",
+      "correct": true,
+      "explanation": "A \"looks suspicious but is fine\" example teaches the pass where the threshold is, especially for patterns the project explicitly accepts. Examples that only show real bugs teach the model to flag anything resembling them."
+    },
+    {
+      "id": "q9",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O30", "O13"],
+      "prompt": "The CI review flags `any` in `src/legacy/**` and the logger's `// best-effort` empty `catch` on every pull request. Both are listed as accepted in `CONVENTIONS.md`, which the reviewer is never given. What is the best fix?",
+      "options": [
+        "Post-process the review output with regexes that drop findings mentioning `legacy/` or `best-effort`.",
+        "Raise the reported severity threshold so that only `high` and `critical` findings reach the pull request.",
+        "Make the conventions, with their accepted patterns and exclusions, persistent context on every review run.",
+        "Paste the accepted patterns into the pull request description each time a reviewer complains about them."
+      ],
+      "correctIndex": 2,
+      "explanation": "False positives here come from the reviewer not knowing local conventions. Loading them on every review (for example `@CONVENTIONS.md` in `CLAUDE.md`, read by each reviewer, or in each pass's system prompt) plus explicit exclusions fixes the cause. Regex filters treat the symptom and need code for every new pattern. A higher threshold hides real medium findings. Ad-hoc pasting isn't persistent."
+    },
+    {
+      "id": "q10",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O08"],
+      "prompt": "A developer asks Claude to change how invoice totals are rounded. The billing lead must approve the approach before any file changes, and nobody is sure which modules compute totals. How should the developer run it?",
+      "options": [
+        "Direct execution, then send the resulting diff to the billing lead for approval before merging the branch.",
+        "Plan mode, so Claude explores and proposes an approach while edits stay blocked until the plan is approved.",
+        "A multi-phase workflow with inventory, pilot and batch phases and a progress file for resuming later on.",
+        "Direct execution in a throwaway git branch, so a rejected approach can be discarded with `git reset`."
+      ],
+      "correctIndex": 1,
+      "explanation": "Approval before edits, an unclear approach and an unknown set of files are exactly the cases for plan mode. Direct execution turns review into reviewing a fait accompli, whether or not the branch can be discarded. A multi-phase workflow is for many repeated units or staged sign-offs, which is more structure than a single rounding change needs."
+    },
+    {
+      "id": "q11",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O08"],
+      "prompt": "The team wants to migrate 400 test files from Jest to Vitest. A first attempt in one long session produced a diff nobody could review and, after an interruption, nobody knew which files were done. What approach fits?",
+      "options": [
+        "Plan mode for the whole migration: approve one complete plan covering all 400 files, then let Claude run it.",
+        "Direct execution with a larger context window, so the whole migration fits into one uninterrupted session.",
+        "Direct execution file by file, typing one prompt per test file and reviewing each diff as it is produced.",
+        "Multi-phase: inventory, a pilot with a checkpoint, verified batches logged to a progress file, final check."
+      ],
+      "correctIndex": 3,
+      "explanation": "Many repeated units call for explicit phases with human checkpoints and a progress file so an interrupted run can resume. Approving a 400-file plan isn't meaningful review. A bigger context doesn't make the diff reviewable or the run resumable. Four hundred hand-typed prompts give review but no pilot, no batch verification and no record of progress."
+    },
+    {
+      "id": "q12",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O11", "O13"],
+      "prompt": "A GitHub Actions step runs `claude \"Review this PR\" --dangerously-skip-permissions`. The job sometimes hangs until timeout and its prose output can't gate the build. Which invocation fixes it for an unattended, read-only review?",
+      "options": [
+        "`claude \"Review this PR\" --permission-mode dontAsk --allowedTools \"Read,Grep,Bash(git diff *)\" --json-schema \"$SCHEMA\" --max-turns 15`",
+        "`claude -p \"Review this PR\" --dangerously-skip-permissions --allowedTools \"Read,Grep\" --json-schema \"$SCHEMA\" --max-turns 15`",
+        "`claude -p \"Review this PR\" --permission-mode dontAsk --allowedTools \"Read,Grep,Bash(git diff *)\" --json-schema \"$SCHEMA\" --max-turns 15`",
+        "`claude -p \"Review this PR\" --permission-mode acceptEdits --allowedTools \"Read,Grep,Bash\" --output-format text --max-turns 15`"
+      ],
+      "correctIndex": 2,
+      "explanation": "`-p` stops the interactive session that hangs in CI. `dontAsk` denies anything not pre-approved without waiting, the scoped `--allowedTools` lets the review read the diff, `--json-schema` returns validated `structured_output` the job can gate on, and `--max-turns` caps the run. Option A is the right flags without `-p`, so it still starts an interactive session and hangs. `--dangerously-skip-permissions` is `bypassPermissions`, which turns every check off on a runner holding secrets. Option D lets a review edit files, approves every shell command with a bare `Bash`, and returns prose the job can't gate on."
+    },
+    {
+      "id": "q13",
+      "type": "true-false",
+      "difficulty": "apply",
+      "objectives": ["O11"],
+      "prompt": "A CI review run returns `{\"subtype\": \"error_max_turns\", \"is_error\": true}` with no findings. The pipeline can treat this as a clean review, since nothing was reported.",
+      "correct": false,
+      "explanation": "Hitting `--max-turns` (or `--max-budget-usd`) ends the run early with an error result. The review is incomplete, so the step must fail and surface it. Gate on `is_error == false and subtype == \"success\"` as well as on the findings."
+    },
+    {
+      "id": "q14",
+      "type": "multiple-choice",
+      "difficulty": "recall",
+      "objectives": ["O32"],
+      "prompt": "An agent needs lines 4,000–4,080 of a 20,000-line log file whose path it already knows. Which tool call is the right one?",
+      "options": [
+        "Read the file with `offset` and `limit` so only that 80-line window enters the context.",
+        "Grep the file in `content` mode with a pattern that matches every line of the log file.",
+        "Bash with `cat` on the log file, then pick out the needed lines from the full output.",
+        "Glob for the log file's path first, then Read it in full and look for the right lines."
+      ],
+      "correctIndex": 0,
+      "explanation": "Read opens a known file, and `offset`/`limit` return just a window. Grep finds content and would return far more than needed. `cat` through Bash loads all 20,000 lines. Glob finds files by name, which is pointless when the path is known, and a full Read has the same cost as `cat`."
+    },
+    {
+      "id": "q15",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": ["O32", "O17"],
+      "prompt": "You need to know how many `TODO` comments each file under `src/` has, then look at the TODOs in the two worst files. Which sequence uses the least context?",
+      "options": [
+        "Glob `src/**/*.ts`, then Read every returned file in full and count the `TODO` comments in each one.",
+        "Grep `TODO` in `count` mode over `src/`, then Grep in `content` mode on just the two worst files.",
+        "Grep `TODO` in `content` mode over `src/`, then count the matching lines per file from that output.",
+        "Bash `grep -rn TODO src/`, then Read the two worst files in full to see each TODO in its context."
+      ],
+      "correctIndex": 1,
+      "explanation": "`count` mode returns one number per file and no lines. `content` mode on the two chosen files then gives just their TODO lines with line numbers; a windowed Read follows only if a line isn't enough. Reading every file, or pulling every TODO line into context first, spends context on data you don't need."
+    },
+    {
+      "id": "q16",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O17"],
+      "prompt": "Asked which routes reach customer data without an authorization check, an agent greps `src/routes/` for `authorize(` and reports all four routes in `orders.ts` that don't contain it. Three of them pass `req.principal` to a service that does the check. What exploration step was missing?",
+      "options": [
+        "Reading every file under `src/` in full before searching, so the whole codebase was in context first.",
+        "Using Glob instead of Grep, because route files should be located by name rather than by their content.",
+        "Reading a small window around each hit and following the one reference that matters, the service call.",
+        "Running a broader Grep for `auth` across the whole repository so that more call sites would be found."
+      ],
+      "correctIndex": 2,
+      "explanation": "A string match isn't a finding until you check the one hop that matters: read the handler's window and follow the service call it makes. Reading everything up front is the over-reading failure that exhausts context. Glob versus Grep doesn't change what was checked. A broader pattern finds more strings, not whether the check happens."
+    },
+    {
+      "id": "q17",
+      "type": "multiple-choice",
+      "difficulty": "analyze",
+      "objectives": ["O15"],
+      "prompt": "Claude's generated tests for `splitInstalments(totalCents, parts)` all assert `expect(result).toHaveLength(parts)`. They pass and coverage is 100%, but a bug that loses a cent goes unnoticed. What should change in the request?",
+      "options": [
+        "Ask for 100% branch coverage as well as line coverage, so every code path gets its own test case.",
+        "Ask Claude to compute expected values by running the function and pasting the results into tests.",
+        "Ask for more test cases with larger and more varied inputs, generated randomly within valid ranges.",
+        "Give the existing tests and the rules, and require exact expected arrays such as `[333, 333, 334]`."
+      ],
+      "correctIndex": 3,
+      "explanation": "Meaningful tests pin behaviour: the parts sum to the total and the remainder goes on the last instalment. That needs the rules, the existing tests as examples, and concrete expected values worked out from the rules. Coverage measures which lines ran, not what was asserted. Expected values taken from running the code bake the bug into the test. More inputs with the same weak assertion still assert nothing."
+    },
+    {
+      "id": "q18",
+      "type": "true-false",
+      "difficulty": "recall",
+      "objectives": ["O15"],
+      "prompt": "Including the project's existing test files in a test-generation prompt helps mainly because they show the framework, the style and the fixture factories (such as `makeOrder`) that new tests should reuse.",
+      "correct": true,
+      "explanation": "Existing tests are the best source of conventions: the framework, the file and `describe` structure, and especially the fixture helpers. Without them, the model invents new fixtures in every file."
+    }
+  ]
+}
