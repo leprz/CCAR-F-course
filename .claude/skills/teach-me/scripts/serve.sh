@@ -60,7 +60,7 @@ PY
 # 3. Start the first available server backgrounded, serving <root>.
 if command -v python3 >/dev/null 2>&1; then
   # http.server sends no Cache-Control, so browsers keep stale app.js/JSON
-  # after an asset sync. Serve the same files with "no-store".
+  # after an asset sync. Serve the same files with "no-store", on localhost only.
   nohup python3 - "$port" "$ROOT" >/dev/null 2>&1 <<'PY' &
 import functools, http.server, sys
 
@@ -70,7 +70,7 @@ class NoStore(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 port, root = int(sys.argv[1]), sys.argv[2]
-http.server.ThreadingHTTPServer(("", port), functools.partial(NoStore, directory=root)).serve_forever()
+http.server.ThreadingHTTPServer(("127.0.0.1", port), functools.partial(NoStore, directory=root)).serve_forever()
 PY
 elif command -v npx >/dev/null 2>&1; then
   nohup npx --yes serve -l "$port" "$ROOT" >/dev/null 2>&1 &
