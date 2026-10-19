@@ -1,0 +1,15 @@
+ACME OFFICE SUPPLY INC.
+1200 Market St, Philadelphia, PA 19107
+INVOICE
+Invoice #: 10234
+Invoice Date: 03/04/2026
+Due Date: 04/03/2026
+PO Number: 4500-1182
+Bill To: Northwind Traders LLC
+
+Qty  Description                 Unit Price   Amount
+10   Printer paper, A4 (box)     $24.50       $245.00
+4    Toner cartridge HP 58A      $189.00      $756.00
+2    Ergonomic chair mat         $122.25      $244.50
+                                 TOTAL USD    $1,245.50
+Terms: Net 30

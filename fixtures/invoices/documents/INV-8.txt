@@ -1,0 +1,10 @@
+Faktura VAT nr FV/2026/03/112
+Data wystawienia: 12.03.2026
+Termin płatności: 26.03.2026
+Sprzedawca: Kowalski i Wspólnicy Sp. z o.o.
+Nabywca: Northwind Traders LLC
+
+Lp. Nazwa                  Ilość  Cena netto  Wartość brutto
+1   Usługa wdrożeniowa     1      2 000,00    2 460,00
+Razem do zapłaty: 2 460,00 zł
+Sposób płatności: przelew 14 dni

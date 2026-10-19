@@ -56,6 +56,11 @@ or run `bash .claude/skills/teach-me/scripts/serve.sh teach-me` and open `index.
 - Every question carries `objectives: ["Oxx"]`. Validate with `python3 .claude/skills/teach-me/scripts/validate-quiz.py <file>`,
   then rebuild the index with `python3 .claude/skills/teach-me/scripts/build-library.py teach-me`.
 - Write questions as exam-style scenarios with plausible distractors, and explain why each wrong option is wrong.
+- The portal shows `fixtures/` through a gitignored symlink in `teach-me/` (made by `prepare-root.sh`) and `source.html`.
+  `build-library.py` writes `sources.json`, mapping each fixture id to a file: a file whose name has a digit
+  (`fixtures/invoices/documents/INV-1.txt` -> `INV-1`), else the `data.ts` with `id: '<ID>'`. In the notes, a click on an
+  id or a `fixtures/…` path opens that file in a dialog, rendered by type (markdown, text, code, image, PDF). To make a new
+  fixture viewable on its own, give it its own file named after its id (as the invoice documents are).
 
 ## Content rules
 

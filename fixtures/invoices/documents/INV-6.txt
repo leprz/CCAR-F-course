@@ -1,0 +1,7 @@
+MASTER SERVICES AGREEMENT
+between Cloudway Hosting Ltd ("Provider") and Northwind Traders LLC ("Client")
+Effective date: 1 April 2026
+Term: 12 months, renewing automatically.
+Fees: GBP 2,000.00 per month, invoiced monthly in advance.
+Payment terms: 30 days from invoice date.
+Signed for the Provider: A. Patel, Director

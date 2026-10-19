@@ -1,0 +1,10 @@
+ACME OFFICE SUPPLY INC.
+CREDIT NOTE
+Credit Note No: CN-889
+Date: 03/20/2026
+Reference: Invoice #10234, PO 4500-1182
+Reason: 1 toner cartridge returned damaged
+
+1  Toner cartridge HP 58A (returned)   -$189.00
+CREDIT TOTAL                            -$189.00
+This amount will be applied to your next invoice.

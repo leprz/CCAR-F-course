@@ -2,3 +2,6 @@
 # library.json and lectures/*/{lecture.md,questions.json} are committed.
 .server.pid
 .server.port
+# Symlink to the repo's fixtures/ (made by prepare-root.sh) so source.html can
+# show them.
+/fixtures

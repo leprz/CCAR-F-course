@@ -1,0 +1,14 @@
+Müller Industrietechnik GmbH
+Hafenstraße 12, 20457 Hamburg
+RECHNUNG
+Rechnungsnummer: RE-2026-0457
+Rechnungsdatum: 04.03.2026
+Zahlbar bis: 18.03.2026
+Kunde: Northwind Traders LLC
+
+Pos  Bezeichnung              Menge  Einzelpreis   Betrag
+1    Hydraulikschlauch 2m     5      45,00 €       225,00 €
+2    Dichtungssatz            12     84,13 €       1.009,56 €
+Gesamtbetrag                                       1.234,56 €
+Zahlungsbedingungen: 14 Tage netto
+Bankverbindung: IBAN DE89 3704 0044 0532 0130 00, BIC COBADEFFXXX

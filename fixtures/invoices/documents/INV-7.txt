@@ -1,0 +1,70 @@
+GLOBEX INDUSTRIAL SUPPLY
+INVOICE GX-55120
+Issued: 2026-03-10   Due: 2026-04-09
+Customer PO: 4500-1300
+Currency: USD
+LINE ITEMS
+No.  Description                Qty  Unit       Amount
+  1  Fastener kit SKU-1001        2      4.15       8.30
+  2  Fastener kit SKU-1002        3      7.90      23.70
+  3  Fastener kit SKU-1003        4     11.65      46.60
+  4  Fastener kit SKU-1004        5     15.40      77.00
+  5  Fastener kit SKU-1005        1     19.15      19.15
+  6  Fastener kit SKU-1006        2     22.90      45.80
+  7  Fastener kit SKU-1007        3     26.65      79.95
+  8  Fastener kit SKU-1008        4     30.40     121.60
+  9  Fastener kit SKU-1009        5     34.15     170.75
+ 10  Fastener kit SKU-1010        1     37.90      37.90
+ 11  Fastener kit SKU-1011        2     41.65      83.30
+ 12  Fastener kit SKU-1012        3     45.40     136.20
+ 13  Fastener kit SKU-1013        4     49.15     196.60
+ 14  Fastener kit SKU-1014        5     52.90     264.50
+ 15  Fastener kit SKU-1015        1     56.65      56.65
+ 16  Fastener kit SKU-1016        2     60.40     120.80
+ 17  Fastener kit SKU-1017        3     64.15     192.45
+ 18  Fastener kit SKU-1018        4     67.90     271.60
+ 19  Fastener kit SKU-1019        5     71.65     358.25
+ 20  Fastener kit SKU-1020        1     75.40      75.40
+ 21  Fastener kit SKU-1021        2     79.15     158.30
+ 22  Fastener kit SKU-1022        3     82.90     248.70
+ 23  Fastener kit SKU-1023        4     86.65     346.60
+ 24  Fastener kit SKU-1024        5     90.40     452.00
+ 25  Fastener kit SKU-1025        1     94.15      94.15
+ 26  Fastener kit SKU-1026        2     97.90     195.80
+ 27  Fastener kit SKU-1027        3    101.65     304.95
+ 28  Fastener kit SKU-1028        4    105.40     421.60
+ 29  Fastener kit SKU-1029        5    109.15     545.75
+ 30  Fastener kit SKU-1030        1    112.90     112.90
+ 31  Fastener kit SKU-1031        2    116.65     233.30
+ 32  Fastener kit SKU-1032        3    120.40     361.20
+ 33  Fastener kit SKU-1033        4    124.15     496.60
+ 34  Fastener kit SKU-1034        5    127.90     639.50
+ 35  Fastener kit SKU-1035        1    131.65     131.65
+ 36  Fastener kit SKU-1036        2    135.40     270.80
+ 37  Fastener kit SKU-1037        3    139.15     417.45
+ 38  Fastener kit SKU-1038        4    142.90     571.60
+ 39  Fastener kit SKU-1039        5    146.65     733.25
+ 40  Fastener kit SKU-1040        1    150.40     150.40
+ 41  Fastener kit SKU-1041        2    154.15     308.30
+ 42  Fastener kit SKU-1042        3    157.90     473.70
+ 43  Fastener kit SKU-1043        4    161.65     646.60
+ 44  Fastener kit SKU-1044        5    165.40     827.00
+ 45  Fastener kit SKU-1045        1    169.15     169.15
+ 46  Fastener kit SKU-1046        2    172.90     345.80
+ 47  Fastener kit SKU-1047        3    176.65     529.95
+ 48  Fastener kit SKU-1048        4    180.40     721.60
+ 49  Fastener kit SKU-1049        5    184.15     920.75
+ 50  Fastener kit SKU-1050        1    187.90     187.90
+ 51  Fastener kit SKU-1051        2    191.65     383.30
+ 52  Fastener kit SKU-1052        3    195.40     586.20
+ 53  Fastener kit SKU-1053        4    199.15     796.60
+ 54  Fastener kit SKU-1054        5    202.90    1014.50
+ 55  Fastener kit SKU-1055        1    206.65     206.65
+ 56  Fastener kit SKU-1056        2    210.40     420.80
+ 57  Fastener kit SKU-1057        3    214.15     642.45
+ 58  Fastener kit SKU-1058        4    217.90     871.60
+ 59  Fastener kit SKU-1059        5    221.65    1108.25
+ 60  Fastener kit SKU-1060        1    225.40     225.40
+END LINE ITEMS
+TOTAL DUE: 20659.50 USD
+Terms: Net 30

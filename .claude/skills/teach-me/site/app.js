@@ -4,6 +4,7 @@
      - #quiz-root     -> the quiz renderer (reads lectures/<slug>/questions.json)
      - #notes-root    -> the lecture viewer (reads lectures/<slug>/lecture.md)
      - #exam-root     -> the mock exam (library.json + every questions.json)
+     - #source-root   -> the fixture viewer: one file, or a browser of all (sources.json)
    Data is always loaded over HTTP as JSON; nothing is embedded in the HTML.
    Question types: multiple-choice and true-false (both auto-graded).
    Questions may carry `objectives: ["O01", ...]`; results are then broken down
@@ -366,6 +367,7 @@
         article.innerHTML = window.marked ? window.marked.parse(body) : esc(body);
         renderMermaid(article);
         highlightWithin(article);
+        loadSources().then(function (sources) { linkSources(article, sources, { dialog: true }); });
         root.innerHTML = '';
         root.appendChild(article);
         root.appendChild(el('div', { class: 'actions center' }, [
@@ -382,6 +384,360 @@
           el('p', { text: 'lecture.md for "' + slug + '" failed to load.' })
         ]));
       });
+  }
+
+  // ---- fixture links + viewer ------------------------------------------
+  // sources.json (written by build-library.py) lists the files under the
+  // fixtures/ symlink and maps each fixture id to where it lives: a file of
+  // its own (INV-1 -> fixtures/invoices/documents/INV-1.txt) or, for a record
+  // kept in code, the data.ts that defines `id: '<id>'`. In the notes, an id or
+  // a fixtures/ path opens that file in a dialog; source.html shows the same
+  // view as a page, plus a browser of every file. Without sources.json the
+  // notes simply render without those links.
+  var SOURCE_PATH = /^fixtures\/[A-Za-z0-9_.\/-]*$/;
+  // Bare (non-code) text is only linked for these id shapes (and only when the
+  // id exists), so other short ids such as "A1001" are linked only as `A1001`.
+  var BARE_ID = /\b(INV-\d+|T-\d{3}|S\d{1,2})\b/g;
+  var IMAGE_EXT = /^(png|jpe?g|gif|webp|svg|avif)$/i;
+  var HLJS_LANG = { ts: 'typescript', js: 'javascript', mjs: 'javascript', json: 'json', sh: 'bash', yml: 'yaml', yaml: 'yaml', py: 'python' };
+
+  var sourcesPromise = null;
+  function loadSources() {
+    if (!sourcesPromise) {
+      sourcesPromise = fetch('sources.json', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    }
+    return sourcesPromise;
+  }
+
+  function fileExt(path) {
+    return ((path.match(/\.([a-z0-9]+)$/i) || [])[1] || '').toLowerCase();
+  }
+
+  // A link target is { path } for a whole file, or { path, id } for one record
+  // inside a shared file (data.ts), which the viewer then shows on its own.
+  function idTarget(sources, id) {
+    var path = (sources.ids || {})[id];
+    if (!path) return null;
+    var stem = path.replace(/^.*\//, '').replace(/\.[^.]*$/, '');
+    return stem === id ? { path: path } : { path: path, id: id };
+  }
+
+  // Resolve a fixtures/ path (a file, or a folder written with or without a
+  // trailing slash). A folder resolves to its README.md when it has one,
+  // otherwise to { dir }, which opens the browser filtered to that folder.
+  function resolveSourcePath(sources, raw) {
+    var path = raw.replace(/^(\.\.\/|\.\/)+/, '').replace(/[#?].*$/, '');
+    if (!SOURCE_PATH.test(path) || path.indexOf('..') !== -1) return null;
+    var files = sources.files;
+    if (files.indexOf(path) !== -1) return { path: path };
+    var dir = path.replace(/\/?$/, '/');
+    if (files.indexOf(dir + 'README.md') !== -1) return { path: dir + 'README.md' };
+    for (var i = 0; i < files.length; i++) {
+      if (files[i].indexOf(dir) === 0) return { dir: dir };
+    }
+    return null;
+  }
+
+  // A shortened path such as `sources/S2.md` or `documents/INV-1.txt`, when
+  // exactly one fixture file ends with it.
+  function resolvePathSuffix(sources, text) {
+    if (!/\/[^\/]+\.[a-z0-9]+$/i.test(text) || /\s/.test(text)) return null;
+    var hits = sources.files.filter(function (f) { return f.slice(-text.length - 1) === '/' + text; });
+    return hits.length === 1 ? { path: hits[0] } : null;
+  }
+
+  function targetUrl(t) {
+    if (t.dir) return 'source.html?filter=' + encodeURIComponent(t.dir);
+    return 'source.html?path=' + encodeURIComponent(t.path) + (t.id ? '&id=' + encodeURIComponent(t.id) : '');
+  }
+
+  // Point an <a> at a target. File targets carry data-path (and data-id) so a
+  // click inside a node with dialog clicks enabled opens them in the dialog.
+  function aimLink(a, t) {
+    a.setAttribute('href', targetUrl(t));
+    a.classList.add('source-link');
+    if (t.path) {
+      a.setAttribute('data-path', t.path);
+      if (t.id) a.setAttribute('data-id', t.id);
+      a.setAttribute('title', 'Show ' + t.path);
+    }
+    return a;
+  }
+
+  // Link fixture ids and fixtures/ paths inside rendered markdown. Fenced code
+  // blocks and external links are left alone. Links to lesson folders work in
+  // an editor or on GitHub but point outside the portal's root, so they become
+  // plain text. With opts.dialog, a click on a file link opens the dialog.
+  // opts.self is the file being shown, which is never linked to itself.
+  function linkSources(node, sources, opts) {
+    if (!sources) return;
+    var ids = sources.ids || {};
+    var self = opts && opts.self;
+    var isSelf = function (t) { return t && !t.dir && !t.id && t.path === self; };
+    if (opts && opts.dialog && !node.getAttribute('data-dialog-clicks')) {
+      node.setAttribute('data-dialog-clicks', '1');
+      node.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[data-path]');
+        if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        showFileDialog({ path: a.getAttribute('data-path'), id: a.getAttribute('data-id') || null }, sources);
+      });
+    }
+
+    Array.prototype.forEach.call(node.querySelectorAll('a[href]'), function (a) {
+      var href = a.getAttribute('href');
+      if (/^[a-z]+:|^#/i.test(href) || a.classList.contains('source-link')) return;
+      if (/^(\.\.\/)*lessons\//.test(href)) { a.replaceWith.apply(a, Array.prototype.slice.call(a.childNodes)); return; }
+      var lecture = /(?:^|\/)lectures\/([^\/]+)\/lecture\.md(#.*)?$/.exec(href);
+      if (lecture) { a.setAttribute('href', 'notes.html?lecture=' + encodeURIComponent(lecture[1]) + (lecture[2] || '')); return; }
+      var t = resolveSourcePath(sources, href);
+      if (t && !isSelf(t)) aimLink(a, t);
+    });
+
+    Array.prototype.forEach.call(node.querySelectorAll('code'), function (c) {
+      if (c.closest('pre, a')) return;
+      var text = c.textContent.trim();
+      var t = idTarget(sources, text) || resolveSourcePath(sources, text) || resolvePathSuffix(sources, text);
+      if (t && !isSelf(t)) c.parentNode.replaceChild(aimLink(el('a', {}, [c.cloneNode(true)]), t), c);
+    });
+
+    var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (t) {
+        if (t.parentNode.closest('pre, code, a, .mermaid')) return NodeFilter.FILTER_REJECT;
+        BARE_ID.lastIndex = 0;
+        return BARE_ID.test(t.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    var texts = [];
+    while (walker.nextNode()) texts.push(walker.currentNode);
+    texts.forEach(function (t) {
+      var frag = document.createDocumentFragment(), s = t.nodeValue, last = 0, m;
+      BARE_ID.lastIndex = 0;
+      while ((m = BARE_ID.exec(s))) {
+        if (!ids[m[1]] || isSelf(idTarget(sources, m[1]))) continue;
+        frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+        frag.appendChild(aimLink(el('a', {}, [m[1]]), idTarget(sources, m[1])));
+        last = m.index + m[1].length;
+      }
+      if (!last) return;
+      frag.appendChild(document.createTextNode(s.slice(last)));
+      t.parentNode.replaceChild(frag, t);
+    });
+  }
+
+  // Split highlight.js HTML into one string per line, closing the spans that
+  // are open at each newline and reopening them on the next line, so
+  // multi-line tokens (template literals, block comments) keep their color.
+  function splitHighlightedLines(html) {
+    var lines = [], open = [], cur = '';
+    var re = /(<span[^>]*>)|(<\/span>)|(\n)|([^<\n]+|<)/g, m;
+    while ((m = re.exec(html))) {
+      if (m[1]) { open.push(m[1]); cur += m[1]; }
+      else if (m[2]) { open.pop(); cur += m[2]; }
+      else if (m[3]) {
+        lines.push(cur + open.map(function () { return '</span>'; }).join(''));
+        cur = open.join('');
+      } else cur += m[4];
+    }
+    lines.push(cur);
+    return lines;
+  }
+
+  // The [start, end] line range (0-based) of the record whose `id: '<id>'` is
+  // on line i: up to the enclosing "{" line, down to its matching "}" line.
+  // A one-line record ({ id: 'A1001', ... }) is just that line.
+  function recordRange(lines, i) {
+    var indent = function (l) { return l.match(/^\s*/)[0].length; };
+    if (/\{.*\}/.test(lines[i])) return [i, i];
+    var start = i;
+    while (start > 0 && !(indent(lines[start]) < indent(lines[i]) && /\{\s*$/.test(lines[start]))) start--;
+    var end = start + 1;
+    while (end < lines.length && !(indent(lines[end]) === indent(lines[start]) && /^\s*\}/.test(lines[end]))) end++;
+    return [start, Math.min(end, lines.length - 1)];
+  }
+
+  // Code with line numbers. opts.range limits the lines shown (a record shown
+  // on its own); opts.hit marks lines to highlight. Numbers stay the file's.
+  function codeView(text, ext, opts) {
+    var lang = HLJS_LANG[ext], html = esc(text);
+    if (window.hljs && lang && window.hljs.getLanguage(lang)) {
+      try { html = window.hljs.highlight(text, { language: lang }).value; } catch (e) {}
+    }
+    var lines = splitHighlightedLines(html.replace(/\n$/, ''));
+    var from = opts.range ? opts.range[0] : 0, to = opts.range ? opts.range[1] : lines.length - 1;
+    var codeEl = el('code', { class: 'hljs' + (lang ? ' language-' + lang : '') });
+    var out = [];
+    for (var i = from; i <= to; i++) {
+      var hit = opts.hit && i >= opts.hit[0] && i <= opts.hit[1];
+      out.push('<span class="line' + (hit ? ' hit' : '') + '" id="L' + (i + 1) + '">' +
+        '<a class="ln" href="#L' + (i + 1) + '">' + (i + 1) + '</a>' + (lines[i] || ' ') + '</span>');
+    }
+    codeEl.innerHTML = out.join('');
+    return el('pre', { class: 'source-code' }, [codeEl]);
+  }
+
+  // Render one fixture file by type: markdown rendered, images and PDFs
+  // embedded, code with line numbers, anything else as plain text (an OCR
+  // document reads like a page). With t.id the file is shared (data.ts) and
+  // only that record is shown, or, with opts.wholeFile, highlighted in place.
+  // Resolves to { node, hit } where hit is the first highlighted line element.
+  function renderFileView(t, sources, opts) {
+    var ext = fileExt(t.path);
+    if (IMAGE_EXT.test(ext)) return Promise.resolve({ node: el('img', { class: 'fixture-image', src: t.path, alt: t.path }) });
+    if (ext === 'pdf') return Promise.resolve({ node: el('iframe', { class: 'fixture-pdf', src: t.path, title: t.path }) });
+    return fetch(t.path, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (text) {
+        if (ext === 'md' && !opts.raw) {
+          var body = el('div', { class: 'notes' });
+          body.innerHTML = window.marked ? window.marked.parse(stripFrontMatter(text)) : '<pre>' + esc(text) + '</pre>';
+          // Relative links point at sibling files; resolve them against this
+          // file's folder before handing them to linkSources.
+          var dir = t.path.replace(/[^\/]*$/, '');
+          Array.prototype.forEach.call(body.querySelectorAll('a[href]'), function (a) {
+            var href = a.getAttribute('href');
+            if (/^[a-z]+:|^#|^\//i.test(href)) return;
+            var stack = dir.split('/').filter(Boolean);
+            href.split('/').forEach(function (seg) { if (seg === '..') stack.pop(); else if (seg && seg !== '.') stack.push(seg); });
+            a.setAttribute('href', stack.join('/') + (/\/$/.test(href) ? '/' : ''));
+          });
+          renderMermaid(body);
+          highlightWithin(body);
+          linkSources(body, sources, { dialog: opts.dialog, self: t.path });
+          return { node: body };
+        }
+        if (!HLJS_LANG[ext] && ext !== 'md') return { node: el('pre', { class: 'fixture-text' }, [text.replace(/\n$/, '')]) };
+
+        var rawLines = text.replace(/\n$/, '').split('\n'), range = null;
+        if (t.id) {
+          var idRe = new RegExp("\\bid:\\s*'" + t.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "'");
+          for (var i = 0; i < rawLines.length; i++) if (idRe.test(rawLines[i])) { range = recordRange(rawLines, i); break; }
+        } else if (opts.line) range = [opts.line - 1, opts.line - 1];
+        var pre = codeView(text, ext, range && !opts.wholeFile ? { range: range } : { hit: range });
+        return { node: pre, hit: range && opts.wholeFile ? pre.querySelector('#L' + (range[0] + 1)) : null };
+      });
+  }
+
+  // "fixtures / invoices / documents / INV-1.txt", each folder linking to the
+  // browser filtered to it.
+  function pathCrumbs(path) {
+    var crumbs = el('span', { class: 'source-path' });
+    var parts = path.split('/');
+    parts.forEach(function (p, i) {
+      var sub = parts.slice(0, i + 1).join('/');
+      crumbs.appendChild(i === parts.length - 1 ? el('code', { text: p }) : el('a', { href: 'source.html?filter=' + encodeURIComponent(sub + '/') }, [p]));
+      if (i < parts.length - 1) crumbs.appendChild(document.createTextNode(' / '));
+    });
+    return crumbs;
+  }
+
+  // One shared <dialog> on the notes page: clicking a fixture shows the file
+  // without leaving the lecture. Modified clicks open it as a page instead.
+  var fileDialog = null;
+  function showFileDialog(t, sources) {
+    if (!fileDialog) {
+      fileDialog = el('dialog', { class: 'fixture-dialog' });
+      fileDialog.addEventListener('click', function (e) { if (e.target === fileDialog) fileDialog.close(); });
+      document.body.appendChild(fileDialog);
+    }
+    var close = el('a', { href: '#', class: 'close', 'aria-label': 'Close' });
+    close.addEventListener('click', function (e) { e.preventDefault(); fileDialog.close(); });
+    var body = el('div', { class: 'fixture-body' }, [el('p', { text: 'Loading…' })]);
+    var title = el('p', { class: 'meta' }, [pathCrumbs(t.path)]);
+    if (t.id) title.appendChild(document.createTextNode(' · ' + t.id));
+    title.appendChild(document.createTextNode(' · '));
+    title.appendChild(el('a', { href: targetUrl(t) }, ['open as page']));
+    fileDialog.innerHTML = '';
+    fileDialog.appendChild(el('article', {}, [el('header', {}, [close, title]), body]));
+    if (!fileDialog.open) fileDialog.showModal();
+    renderFileView(t, sources, { dialog: true }).then(function (v) {
+      body.innerHTML = '';
+      body.appendChild(v.node);
+    }).catch(function () {
+      body.innerHTML = '';
+      body.appendChild(el('p', { class: 'error', text: t.path + ' failed to load.' }));
+    });
+  }
+
+  function initSource(root) {
+    if (location.protocol === 'file:') return fileProtocolError(root);
+    var path = qsParam('path');
+    loadSources().then(function (sources) {
+      root.innerHTML = '';
+      if (!sources) {
+        root.appendChild(el('article', { class: 'error' }, [
+          el('h2', { text: 'No sources index' }),
+          el('p', { html: '<code>sources.json</code> is missing. Run <code>prepare-root.sh</code> and <code>build-library.py</code> for this root.' })
+        ]));
+        return;
+      }
+      if (!path) return renderSourceBrowser(root, sources);
+      if (sources.files.indexOf(path) === -1) {
+        root.appendChild(el('article', { class: 'error' }, [
+          el('h2', { text: 'Unknown file' }),
+          el('p', { html: '<code>' + esc(path) + '</code> is not in <code>sources.json</code>. <a href="source.html">Browse all files</a>.' })
+        ]));
+        return;
+      }
+      var t = { path: path, id: qsParam('id') };
+      var raw = qsParam('raw') !== null;
+      var meta = el('p', { class: 'meta' }, [el('a', { href: 'source.html' }, ['fixtures']), ' · ', pathCrumbs(path)]);
+      if (t.id) meta.appendChild(document.createTextNode(' · ' + t.id));
+      if (fileExt(path) === 'md') {
+        meta.appendChild(document.createTextNode(' · '));
+        meta.appendChild(el('a', { href: targetUrl(t) + (raw ? '' : '&raw') }, [raw ? 'rendered' : 'raw']));
+      }
+      var article = el('article', { class: 'source' }, [meta]);
+      root.appendChild(article);
+      document.title = path + ' — teach-me';
+      var line = /^#L(\d+)$/.exec(location.hash);
+      renderFileView(t, sources, { wholeFile: true, raw: raw, line: line ? Number(line[1]) : 0 }).then(function (v) {
+        article.appendChild(v.node);
+        if (v.hit) { v.hit.scrollIntoView({ block: 'start' }); window.scrollBy(0, -80); }
+      }).catch(function () {
+        article.appendChild(el('p', { class: 'error', text: path + ' failed to load.' }));
+      });
+    });
+  }
+
+  function renderSourceBrowser(root, sources) {
+    var filter = el('input', { type: 'search', placeholder: 'Filter files or ids, e.g. invoices, INV-7, T-101', 'aria-label': 'Filter' });
+    filter.value = qsParam('filter') || '';
+    var list = el('div', { class: 'source-browser' });
+    root.appendChild(el('article', {}, [el('h2', { text: 'Fixtures' }), filter, list]));
+
+    function render() {
+      var q = filter.value.trim().toLowerCase();
+      list.innerHTML = '';
+      var ids = Object.keys(sources.ids || {}).filter(function (id) {
+        return !q || id.toLowerCase().indexOf(q) !== -1 || sources.ids[id].toLowerCase().indexOf(q) !== -1;
+      });
+      if (ids.length) {
+        list.appendChild(el('h3', { text: 'Records' }));
+        list.appendChild(el('p', { class: 'fixture-ids' }, ids.map(function (id) {
+          return el('a', { href: targetUrl(idTarget(sources, id)), title: sources.ids[id] }, [el('code', { text: id })]);
+        })));
+        list.appendChild(el('h3', { text: 'Files' }));
+      }
+      var groups = {};
+      sources.files.forEach(function (f) {
+        if (q && f.toLowerCase().indexOf(q) === -1) return;
+        var key = f.split('/').slice(0, 2).join('/');
+        (groups[key] = groups[key] || []).push(f);
+      });
+      Object.keys(groups).forEach(function (key) {
+        var det = el('details', q ? { open: '' } : {}, [el('summary', { text: key + '/ (' + groups[key].length + ')' })]);
+        det.appendChild(el('ul', {}, groups[key].map(function (f) {
+          return el('li', {}, [el('a', { href: targetUrl({ path: f }) }, [f.slice(key.length + 1)])]);
+        })));
+        list.appendChild(det);
+      });
+      if (!list.children.length) list.appendChild(el('p', { class: 'meta', text: 'Nothing matches.' }));
+    }
+    filter.addEventListener('input', render);
+    render();
   }
 
   // ---- quiz page -------------------------------------------------------
@@ -721,6 +1077,8 @@
       buildProgress: buildProgress,
       compareLectures: compareLectures,
       shuffle: shuffle,
+      splitHighlightedLines: splitHighlightedLines,
+      recordRange: recordRange,
       PASS_MARK: PASS_MARK
     };
   }
@@ -731,10 +1089,12 @@
     var quiz = document.getElementById('quiz-root');
     var notes = document.getElementById('notes-root');
     var exam = document.getElementById('exam-root');
+    var source = document.getElementById('source-root');
     if (lib) initLibrary(lib);
     if (quiz) initQuiz(quiz);
     if (notes) initNotes(notes);
     if (exam) initExam(exam);
+    if (source) initSource(source);
     Array.prototype.forEach.call(document.querySelectorAll('[data-action="export-progress"]'), function (b) {
       b.addEventListener('click', exportProgress);
     });

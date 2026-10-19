@@ -1,4 +1,6 @@
-/** Support-desk scenario: a small online shop's customers, orders and inbound tickets. */
+/** Support-desk scenario: a small online shop's customers, orders and inbound tickets (one file each in `tickets/`). */
+
+import { readFileSync } from 'node:fs';
 
 export interface Customer {
   id: string;
@@ -39,29 +41,12 @@ export const orders: Order[] = [
   { id: 'C3001', customerId: 'cus_003', status: 'cancelled', totalUsd: 64.2, placedAt: '2026-10-01' },
 ];
 
-export const tickets: Ticket[] = [
-  {
-    id: 'T-100',
-    fromEmail: 'ben.kowalski@example.com',
-    subject: 'Charged twice??',
-    body: 'Hi, I see two charges for my laptop order last month on my card statement. One of them needs to go back to me ASAP, this is a lot of money.',
-  },
-  {
-    id: 'T-101',
-    fromEmail: 'ana.ortiz@example.com',
-    subject: 'Where are my orders',
-    body: 'Can you tell me the status of orders A1001, A1002 and A1003? I need them before the weekend.',
-  },
-  {
-    id: 'T-102',
-    fromEmail: 'chen.li@example.com',
-    subject: 'Password reset not arriving',
-    body: "I've requested a password reset 3 times and no email arrives. Not urgent, just annoying.",
-  },
-  {
-    id: 'T-103',
-    fromEmail: 'unknown.person@example.com',
-    subject: 'Refund',
-    body: 'I want a refund for my order.',
-  },
-];
+/** Parse `tickets/<id>.txt`: "From:" and "Subject:" headers, a blank line, then the body. */
+function readTicket(id: string): Ticket {
+  const text = readFileSync(new URL(`./tickets/${id}.txt`, import.meta.url), 'utf8');
+  const [headers = '', ...body] = text.split('\n\n');
+  const header = (name: string) => new RegExp(`^${name}: (.*)$`, 'm').exec(headers)?.[1] ?? '';
+  return { id, fromEmail: header('From'), subject: header('Subject'), body: body.join('\n\n').replace(/\n$/, '') };
+}
+
+export const tickets: Ticket[] = ['T-100', 'T-101', 'T-102', 'T-103'].map(readTicket);

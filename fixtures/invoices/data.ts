@@ -1,9 +1,17 @@
 /**
  * Document-extraction scenario: accounts-payable inbox of Northwind Traders LLC.
- * Each document is plain text as it arrives after OCR, in deliberately different formats.
+ * Each document is plain text as it arrives after OCR, in deliberately different formats. The text lives in
+ * `documents/<id>.txt`, so it can be read (and linked from the lectures) as a file.
  * `expected` is the ground truth. `null` means the document does NOT contain the value, so a
  * correct extractor must return null rather than guess.
  */
+
+import { readFileSync } from 'node:fs';
+
+/** The OCR text of one document, from `documents/<id>.txt` (without the file's final newline). */
+function readDocument(id: string): string {
+  return readFileSync(new URL(`./documents/${id}.txt`, import.meta.url), 'utf8').replace(/\n$/, '');
+}
 
 export const DOCUMENT_TYPES = ['invoice', 'credit_note', 'contract', 'other'] as const;
 export const CURRENCIES = ['USD', 'EUR', 'GBP', 'PLN', 'other'] as const;
@@ -44,21 +52,7 @@ export interface InvoiceDoc {
 const acme: InvoiceDoc = {
   id: 'INV-1',
   traits: ['us-date', 'usd', 'clean'],
-  text: `ACME OFFICE SUPPLY INC.
-1200 Market St, Philadelphia, PA 19107
-INVOICE
-Invoice #: 10234
-Invoice Date: 03/04/2026
-Due Date: 04/03/2026
-PO Number: 4500-1182
-Bill To: Northwind Traders LLC
-
-Qty  Description                 Unit Price   Amount
-10   Printer paper, A4 (box)     $24.50       $245.00
-4    Toner cartridge HP 58A      $189.00      $756.00
-2    Ergonomic chair mat         $122.25      $244.50
-                                 TOTAL USD    $1,245.50
-Terms: Net 30`,
+  text: readDocument('INV-1'),
   expected: {
     document_type: 'invoice',
     vendor_name: 'Acme Office Supply Inc.',
@@ -81,20 +75,7 @@ Terms: Net 30`,
 const mueller: InvoiceDoc = {
   id: 'INV-2',
   traits: ['eu-date', 'eu-decimal', 'eur', 'no-po', 'bank-details'],
-  text: `Müller Industrietechnik GmbH
-Hafenstraße 12, 20457 Hamburg
-RECHNUNG
-Rechnungsnummer: RE-2026-0457
-Rechnungsdatum: 04.03.2026
-Zahlbar bis: 18.03.2026
-Kunde: Northwind Traders LLC
-
-Pos  Bezeichnung              Menge  Einzelpreis   Betrag
-1    Hydraulikschlauch 2m     5      45,00 €       225,00 €
-2    Dichtungssatz            12     84,13 €       1.009,56 €
-Gesamtbetrag                                       1.234,56 €
-Zahlungsbedingungen: 14 Tage netto
-Bankverbindung: IBAN DE89 3704 0044 0532 0130 00, BIC COBADEFFXXX`,
+  text: readDocument('INV-2'),
   expected: {
     document_type: 'invoice',
     vendor_name: 'Müller Industrietechnik GmbH',
@@ -116,16 +97,7 @@ Bankverbindung: IBAN DE89 3704 0044 0532 0130 00, BIC COBADEFFXXX`,
 const creditNote: InvoiceDoc = {
   id: 'INV-3',
   traits: ['credit-note', 'negative-total', 'usd'],
-  text: `ACME OFFICE SUPPLY INC.
-CREDIT NOTE
-Credit Note No: CN-889
-Date: 03/20/2026
-Reference: Invoice #10234, PO 4500-1182
-Reason: 1 toner cartridge returned damaged
-
-1  Toner cartridge HP 58A (returned)   -$189.00
-CREDIT TOTAL                            -$189.00
-This amount will be applied to your next invoice.`,
+  text: readDocument('INV-3'),
   expected: {
     document_type: 'credit_note',
     vendor_name: 'Acme Office Supply Inc.',
@@ -144,15 +116,7 @@ This amount will be applied to your next invoice.`,
 const handwritten: InvoiceDoc = {
   id: 'INV-4',
   traits: ['handwritten', 'gbp', 'no-po', 'informal-date'],
-  text: `[scanned image, handwritten]
-J. Barker & Sons - joinery
-inv no 77-B
-date: 5th march '26
-for: fitting 2 oak doors + materials
-labour ...... 220
-materials ... 120
-   tot: £340 - cash or bank pls
-[margin, different pen: "PAID?? check w/ Tom"]`,
+  text: readDocument('INV-4'),
   expected: {
     document_type: 'invoice',
     vendor_name: 'J. Barker & Sons',
@@ -174,12 +138,7 @@ materials ... 120
 const ambiguous: InvoiceDoc = {
   id: 'INV-5',
   traits: ['ambiguous-date', 'no-currency', 'relative-due-date'],
-  text: `Brightline Consulting
-Invoice 2026-031
-Date: 02/03/2026
-Professional services – workshop facilitation (2 days)
-Amount due: 1,500.00
-Please pay within 15 days.`,
+  text: readDocument('INV-5'),
   expected: {
     document_type: 'invoice',
     vendor_name: 'Brightline Consulting',
@@ -198,13 +157,7 @@ Please pay within 15 days.`,
 const contract: InvoiceDoc = {
   id: 'INV-6',
   traits: ['contract', 'not-an-invoice', 'recurring-fee'],
-  text: `MASTER SERVICES AGREEMENT
-between Cloudway Hosting Ltd ("Provider") and Northwind Traders LLC ("Client")
-Effective date: 1 April 2026
-Term: 12 months, renewing automatically.
-Fees: GBP 2,000.00 per month, invoiced monthly in advance.
-Payment terms: 30 days from invoice date.
-Signed for the Provider: A. Patel, Director`,
+  text: readDocument('INV-6'),
   expected: {
     document_type: 'contract',
     vendor_name: 'Cloudway Hosting Ltd',
@@ -223,16 +176,7 @@ Signed for the Provider: A. Patel, Director`,
 const polish: InvoiceDoc = {
   id: 'INV-8',
   traits: ['pl-decimal', 'space-thousands', 'pln', 'eu-date'],
-  text: `Faktura VAT nr FV/2026/03/112
-Data wystawienia: 12.03.2026
-Termin płatności: 26.03.2026
-Sprzedawca: Kowalski i Wspólnicy Sp. z o.o.
-Nabywca: Northwind Traders LLC
-
-Lp. Nazwa                  Ilość  Cena netto  Wartość brutto
-1   Usługa wdrożeniowa     1      2 000,00    2 460,00
-Razem do zapłaty: 2 460,00 zł
-Sposób płatności: przelew 14 dni`,
+  text: readDocument('INV-8'),
   expected: {
     document_type: 'invoice',
     vendor_name: 'Kowalski i Wspólnicy Sp. z o.o.',
@@ -250,6 +194,7 @@ Sposób płatności: przelew 14 dni`,
 
 /** A 60-line invoice: too large to extract line by line in one modest response. */
 function buildLargeInvoice(): InvoiceDoc {
+  // documents/INV-7.txt lists exactly these 60 items and their total; keep the two in sync.
   const items: LineItem[] = Array.from({ length: 60 }, (_, i) => {
     const n = i + 1;
     const quantity = (n % 5) + 1;
@@ -257,25 +202,10 @@ function buildLargeInvoice(): InvoiceDoc {
     return { description: `Fastener kit SKU-${String(1000 + n)}`, quantity, unit_price, amount: Math.round(quantity * unit_price * 100) / 100 };
   });
   const total = Math.round(items.reduce((s, it) => s + it.amount, 0) * 100) / 100;
-  const lines = items.map(
-    (it, i) => `${String(i + 1).padStart(3, ' ')}  ${it.description.padEnd(26)} ${String(it.quantity).padStart(3)}  ${(it.unit_price ?? 0).toFixed(2).padStart(8)}  ${it.amount.toFixed(2).padStart(9)}`,
-  );
   return {
     id: 'INV-7',
     traits: ['large', 'usd', 'iso-date'],
-    text: [
-      'GLOBEX INDUSTRIAL SUPPLY',
-      'INVOICE GX-55120',
-      'Issued: 2026-03-10   Due: 2026-04-09',
-      'Customer PO: 4500-1300',
-      'Currency: USD',
-      'LINE ITEMS',
-      'No.  Description                Qty  Unit       Amount',
-      ...lines,
-      'END LINE ITEMS',
-      `TOTAL DUE: ${total.toFixed(2)} USD`,
-      'Terms: Net 30',
-    ].join('\n'),
+    text: readDocument('INV-7'),
     expected: {
       document_type: 'invoice',
       vendor_name: 'Globex Industrial Supply',

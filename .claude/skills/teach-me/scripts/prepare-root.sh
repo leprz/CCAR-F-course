@@ -31,6 +31,11 @@ if [ ! -f "$ROOT/index.html" ] || [ "$skill_ver" -gt "$root_ver" ]; then
     [ "$base" = "VERSION" ] && continue
     cp "$f" "$ROOT/$base"
   done
+  # Stamp the pages' app.js/styles.css links with this version, so browsers
+  # holding an old cached copy fetch the new one after a sync.
+  for f in "$ROOT"/*.html; do
+    sed -i.bak -E "s/(app\.js|styles\.css)\?v=[0-9]+/\1?v=$skill_ver/g" "$f" && rm -f "$f.bak"
+  done
   cp "$SITE/VERSION" "$ROOT/VERSION"
   synced="synced $skill_ver"
 else
@@ -49,8 +54,17 @@ case "$ROOT" in
 # library.json and lectures/*/{lecture.md,questions.json} are committed.
 .server.pid
 .server.port
+# Symlink to the repo's fixtures/ (made by prepare-root.sh) so source.html can
+# show them.
+/fixtures
 EOF
     ;;
 esac
+
+# Expose the sibling fixtures/ folder to the portal (source.html) through a
+# symlink, so the static server can serve it without a copy that would drift.
+if [ -d "$ROOT/../fixtures" ] && [ ! -e "$ROOT/fixtures" ]; then
+  ln -s ../fixtures "$ROOT/fixtures"
+fi
 
 echo "$synced"
