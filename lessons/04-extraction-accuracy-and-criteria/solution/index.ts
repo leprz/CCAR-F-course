@@ -3,6 +3,7 @@ import { modelFromEnv, type MessageCreator } from '../../../lib/claude.ts';
 import {
   CURRENCIES,
   INVOICE_JSON_SCHEMA,
+  invoiceDoc,
   type InvoiceDoc,
   type InvoiceExtraction,
 } from '../../../fixtures/invoices/index.ts';
@@ -64,26 +65,10 @@ export function buildSystemPrompt(scope: Scope, examples: InvoiceDoc[]): string 
 }
 
 /**
- * Pick n examples that together cover as many distinct traits as possible (greedy), never the target itself.
- * Diverse examples teach the format rules; n copies of the easy case teach nothing.
+ * Few-shot examples, hand-picked once and sent with every request (so the system prompt stays cacheable):
+ * Polish decimals, a credit note, a handwritten note. Kept out of the documents the live test scores.
  */
-export function selectFewShotExamples(pool: InvoiceDoc[], target: InvoiceDoc, n: number): InvoiceDoc[] {
-  const candidates = pool.filter((d) => d.id !== target.id);
-  const chosen: InvoiceDoc[] = [];
-  const covered = new Set<string>();
-  while (chosen.length < n && candidates.length) {
-    let bestIndex = 0;
-    let bestGain = -1;
-    candidates.forEach((d, i) => {
-      const gain = d.traits.filter((t) => !covered.has(t)).length;
-      if (gain > bestGain) [bestIndex, bestGain] = [i, gain];
-    });
-    const [pick] = candidates.splice(bestIndex, 1);
-    chosen.push(pick!);
-    pick!.traits.forEach((t) => covered.add(t));
-  }
-  return chosen;
-}
+export const FEW_SHOT_EXAMPLES: InvoiceDoc[] = ['INV-8', 'INV-3', 'INV-4'].map(invoiceDoc);
 
 export function formatExamples(examples: InvoiceDoc[]): string {
   const body = examples
@@ -139,7 +124,7 @@ export async function extractWithValidation(
   doc: InvoiceDoc,
   opts: { examples?: InvoiceDoc[]; maxAttempts?: number; model?: string } = {},
 ): Promise<ValidatedExtraction> {
-  const request = buildRequest(doc, opts.examples ?? [], opts.model);
+  const request = buildRequest(doc, opts.examples ?? FEW_SHOT_EXAMPLES, opts.model);
   const messages: MessageParam[] = [...request.messages];
   const maxAttempts = opts.maxAttempts ?? 2;
   let extraction: InvoiceExtraction | undefined;

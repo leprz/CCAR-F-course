@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T08:47:34Z",
+  "generatedAt": "2026-10-19T18:27:15Z",
   "lectures": [
     {
       "slug": "01-agentic-loop-and-tool-use",
@@ -32,7 +32,7 @@
       "topic": "Structured outputs, extraction schemas, accuracy, truncation and iterative refinement",
       "date": "2026-10-18",
       "depth": "chapter",
-      "questionCount": 14,
+      "questionCount": 16,
       "tags": [
         "cca-f",
         "part-2",

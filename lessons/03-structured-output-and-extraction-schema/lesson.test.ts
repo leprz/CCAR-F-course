@@ -42,6 +42,19 @@ function conforms(value: unknown, node: Node, path = '$'): string[] {
   return errors;
 }
 
+/** What structured outputs rejects with a 400: numeric/string/array constraints, and objects open to extra keys. */
+const UNSUPPORTED_KEYWORDS = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'maxItems'];
+function unsupported(node: unknown, path = '$'): string[] {
+  if (typeof node !== 'object' || node === null) return [];
+  const n = node as Node;
+  const problems = UNSUPPORTED_KEYWORDS.filter((k) => k in n).map((k) => `${path}: ${k}`);
+  if (typeof n.minItems === 'number' && n.minItems > 1) problems.push(`${path}: minItems > 1`);
+  if (typesOf(n).includes('object') && n.additionalProperties !== false) problems.push(`${path}: additionalProperties must be false`);
+  for (const [key, child] of Object.entries((n.properties ?? {}) as Record<string, Node>)) problems.push(...unsupported(child, `${path}.${key}`));
+  if (n.items) problems.push(...unsupported(n.items, `${path}[]`));
+  return problems;
+}
+
 describe('TODO(1) schema lets the model say "absent" instead of fabricating', () => {
   it.each(['invoice_number', 'po_number', 'issue_date', 'due_date', 'currency', 'total_amount', 'payment_terms'])(
     '%s is nullable',
@@ -65,52 +78,12 @@ describe('TODO(1) schema lets the model say "absent" instead of fabricating', ()
     expect(conforms(invoiceDoc(id).expected, schema)).toEqual([]);
   });
 
-  it('is accepted by structured outputs (no unsupported keywords)', async () => {
-    const solution = await import('./solution/index.ts');
-    expect(solution.findUnsupportedKeywords(lesson.INVOICE_SCHEMA)).toEqual([]);
+  it('is accepted by structured outputs (no unsupported keywords)', () => {
+    expect(unsupported(schema)).toEqual([]);
   });
 });
 
-describe('TODO(2) findUnsupportedKeywords', () => {
-  const bad = {
-    type: 'object',
-    properties: {
-      total: { type: 'number', minimum: 0 },
-      name: { type: 'string', maxLength: 10 },
-      tags: { type: 'array', minItems: 2, items: { type: 'object', properties: { k: { type: 'string' } } } },
-    },
-  };
-  it('reports constraint keywords by path', () => {
-    const found = lesson.findUnsupportedKeywords(bad);
-    expect(found).toEqual(expect.arrayContaining(['properties.total: minimum', 'properties.name: maxLength', 'properties.tags: minItems']));
-  });
-  it('reports objects without additionalProperties: false, including nested ones', () => {
-    const found = lesson.findUnsupportedKeywords(bad);
-    expect(found).toEqual(expect.arrayContaining([': additionalProperties', 'properties.tags.items: additionalProperties']));
-  });
-  it('accepts a compliant schema', () => {
-    expect(lesson.findUnsupportedKeywords({ type: 'object', additionalProperties: false, properties: { a: { type: 'string' } } })).toEqual([]);
-  });
-});
-
-describe('TODO(3) chooseOutputMethod', () => {
-  it.each([
-    ['guaranteed', 'claude-haiku-5-5', 'json_outputs'],
-    ['guaranteed', 'claude-opus-5-5', 'json_outputs'],
-    ['guaranteed', 'claude-3-7-sonnet', 'forced_tool'],
-    ['best_effort', 'claude-opus-5-5', 'prompt_only'],
-    ['best_effort', 'claude-3-7-sonnet', 'prompt_only'],
-  ] as const)('%s on %s → %s', (strictness, model, method) => {
-    expect(lesson.chooseOutputMethod({ strictness, model })).toBe(method);
-  });
-  it('never treats prefill as a guarantee', () => {
-    for (const model of Object.keys(lesson.MODEL_CAPS)) {
-      expect(lesson.chooseOutputMethod({ strictness: 'guaranteed', model })).not.toBe('prefill');
-    }
-  });
-});
-
-describe('TODO(4) buildExtractionRequest', () => {
+describe('TODO(2) buildExtractionRequest', () => {
   const req = lesson.buildExtractionRequest(invoiceDoc('INV-2'), 'claude-haiku-5-5');
   it('uses structured outputs with the schema', () => {
     expect(req.output_config?.format).toEqual({ type: 'json_schema', schema: lesson.INVOICE_SCHEMA });
@@ -126,7 +99,7 @@ describe('TODO(4) buildExtractionRequest', () => {
   });
 });
 
-describe('TODO(5) parseExtraction', () => {
+describe('TODO(3) parseExtraction', () => {
   const json = JSON.stringify(invoiceDoc('INV-2').expected);
   it('parses a complete response', () => {
     expect(lesson.parseExtraction(reply([text(json)], 'end_turn'))).toEqual(invoiceDoc('INV-2').expected);

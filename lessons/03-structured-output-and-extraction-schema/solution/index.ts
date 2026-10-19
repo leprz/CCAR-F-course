@@ -70,67 +70,6 @@ export const INVOICE_SCHEMA: Record<string, unknown> = {
   ],
 };
 
-/** Keywords structured outputs rejects with a 400 (numeric/string/array constraints). */
-export const UNSUPPORTED_KEYWORDS = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'maxItems'] as const;
-
-/**
- * Walk a JSON schema and report what structured outputs would reject, as `"<path>: <keyword>"`.
- * Path is dot-separated from the root ("" for the root itself), e.g. "properties.total: minimum".
- */
-export function findUnsupportedKeywords(schema: unknown, path = ''): string[] {
-  if (typeof schema !== 'object' || schema === null) return [];
-  const node = schema as Record<string, unknown>;
-  const problems: string[] = [];
-  for (const keyword of UNSUPPORTED_KEYWORDS) {
-    if (keyword in node) problems.push(`${path}: ${keyword}`);
-  }
-  if (typeof node.minItems === 'number' && node.minItems > 1) problems.push(`${path}: minItems`);
-  const isObject = node.type === 'object' || (Array.isArray(node.type) && node.type.includes('object'));
-  if (isObject && node.additionalProperties !== false) problems.push(`${path}: additionalProperties`);
-
-  const join = (p: string) => (path ? `${path}.${p}` : p);
-  if (node.properties && typeof node.properties === 'object') {
-    for (const [key, child] of Object.entries(node.properties)) {
-      problems.push(...findUnsupportedKeywords(child, join(`properties.${key}`)));
-    }
-  }
-  if (node.items) problems.push(...findUnsupportedKeywords(node.items, join('items')));
-  return problems;
-}
-
-export interface ModelCaps {
-  structuredOutputs: boolean;
-  forcedToolChoice: boolean;
-  prefill: boolean;
-}
-
-/** Capability snapshot from the docs (checked 2026-10-18). */
-export const MODEL_CAPS: Record<string, ModelCaps> = {
-  'claude-haiku-5-5': { structuredOutputs: true, forcedToolChoice: true, prefill: false },
-  'claude-opus-5-5': { structuredOutputs: true, forcedToolChoice: false, prefill: false },
-  'claude-sonnet-5-5': { structuredOutputs: true, forcedToolChoice: false, prefill: false },
-  // A legacy model from before structured outputs, kept to practise the classic pattern.
-  'claude-3-7-sonnet': { structuredOutputs: false, forcedToolChoice: true, prefill: true },
-};
-
-export type OutputMethod = 'json_outputs' | 'forced_tool' | 'prompt_only' | 'prefill';
-
-/**
- * Pick the most reliable way to get schema-shaped output:
- *  - best effort is enough → plain instructions (+ an example)
- *  - guarantee needed and structured outputs available → output_config.format (constrained decoding)
- *  - guarantee needed on a legacy model → a tool whose input_schema is the shape, forced with tool_choice
- * Prefill only nudges the start of the response. It is never a guarantee, and newer models reject it.
- */
-export function chooseOutputMethod(need: { strictness: 'guaranteed' | 'best_effort'; model: string }): OutputMethod {
-  if (need.strictness === 'best_effort') return 'prompt_only';
-  const caps = MODEL_CAPS[need.model];
-  if (!caps) throw new Error(`Unknown model ${need.model}`);
-  if (caps.structuredOutputs) return 'json_outputs';
-  if (caps.forcedToolChoice) return 'forced_tool';
-  throw new Error(`${need.model} cannot guarantee a schema; validate and retry instead`);
-}
-
 export const SYSTEM_PROMPT =
   'You extract data from accounts-payable documents. ' +
   'Copy values only from the document. If a value is not in the document, return null; never guess or derive it. ' +

@@ -30,7 +30,7 @@ doesn't fit, and run a refinement loop that converges. The four lessons that fol
 
 ## The running example
 
-Throughout this chapter we'll work on the accounts-payable (AP) inbox of **Northwind Traders LLC**, a small company
+Throughout this chapter we'll work on the accounts-payable inbox (the mailbox where suppliers send the bills to be paid) of **Northwind Traders LLC**, a small company
 that receives supplier documents by email and scan. It's the same data the lessons use (`fixtures/invoices/`). Every
 document arrives as plain text after OCR, and they are deliberately unalike:
 
@@ -187,20 +187,14 @@ export function parseExtraction(message: Message): InvoiceExtraction {
 }
 ```
 
-The choice of method is itself code in Lesson 3. Given how strict the need is and what the model supports, it returns the
-most reliable option:
+Choosing the method is a short decision you make once per pipeline, not code you run per request:
 
-```ts
-export function chooseOutputMethod(need: { strictness: 'guaranteed' | 'best_effort'; model: string }): OutputMethod {
-  if (need.strictness === 'best_effort') return 'prompt_only';
-  const caps = MODEL_CAPS[need.model];
-  if (caps.structuredOutputs) return 'json_outputs';   // Haiku/Sonnet/Opus 5.5
-  if (caps.forcedToolChoice) return 'forced_tool';     // a legacy model without structured outputs
-  throw new Error(`${need.model} cannot guarantee a schema; validate and retry instead`);
-}
-```
+| Need | Model has structured outputs (Haiku/Sonnet/Opus 5.5) | Legacy model without them |
+|------|------------------------------------------------------|---------------------------|
+| Best effort | Prompt instructions (+ an example) | Prompt instructions (+ an example) |
+| Guaranteed shape | `output_config.format` | A tool whose `input_schema` is the shape, forced with `tool_choice` |
 
-Prefill never appears as an answer: it can't guarantee anything, and the current models reject it.
+Prefill never appears in the table: it can't guarantee anything, and the current models reject it.
 
 ### What goes wrong
 
@@ -332,13 +326,13 @@ one way, return null for it and list the field in ambiguous_fields."*
 
 **A constraint structured outputs rejects.** A well-meaning schema adds `"total_amount": { "type": "number",
 "minimum": 0 }` to stop negative totals. The request fails with a 400 error, because `minimum` isn't supported. (It
-would also have been wrong: credit notes like `INV-3` are negative.) Lesson 3 has you write `findUnsupportedKeywords`,
-which walks a schema and reports such problems before the API does:
+would also have been wrong: credit notes like `INV-3` are negative.) Lesson 3's tests walk your schema and report such problems
+before the API does:
 
 ```text
-properties.total_amount: minimum
-properties.line_items: minItems          (minItems: 2)
-properties.line_items.items: additionalProperties
+$.total_amount: minimum
+$.line_items: minItems > 1
+$.line_items[]: additionalProperties must be false
 ```
 
 **Nullable everything, measured nothing.** Making every field nullable can over-correct: a lazy extraction returns
@@ -412,17 +406,24 @@ routing).
 
 ### Worked example: `INV-2`, from wrong to right
 
-First, picking the few-shot examples. Lesson 4's `selectFewShotExamples` uses each fixture's `traits` and greedily picks the
-document that covers the most traits not yet covered, never the target. For the target `INV-5` and `n = 3`:
+First, the few-shot examples. Lesson 4 picks them once, by hand, and sends the same three with every document:
 
-| Step | Pick | New traits it covers |
-|------|------|----------------------|
-| 1 | `INV-2` (Müller) | eu-date, eu-decimal, eur, no-po, bank-details (5) |
-| 2 | `INV-1` (Acme) | us-date, usd, clean (3; ties are broken by order) |
-| 3 | `INV-4` (Barker) | handwritten, gbp, informal-date (3) |
+| Example | What its output demonstrates |
+|---------|------------------------------|
+| `INV-8` (Polish) | EU date, space thousands and comma decimals (`2 460,00 zł` → `2460`), PLN |
+| `INV-3` (credit note) | negative total and line amounts |
+| `INV-4` (Barker) | GBP, an informal date, the handwritten "PAID??" note ignored |
 
-A German invoice, a clean US invoice and a handwritten British one: three examples that between them demonstrate
-both date conventions, three currencies, a missing PO and messy input.
+Three examples that between them cover the conversions and boundaries the rules describe. A fixed set keeps the
+system prompt identical on every request, so prompt caching can reuse it; choosing examples per document would change
+the prompt on every call. And none of the three is among the documents the lesson scores: an example that is also
+a test case gets copied, not extracted. That's why `INV-2`, the document below, isn't an example: its German decimals
+and its IBAN have to be handled by the normalisation rules and the `<exclude>` rule alone.
+
+**Rule or example?** Use both, for different jobs. Every boundary gets a written rule (category, reason, safe output);
+examples then show the rules applied, and show conversions that are easy to misread from words alone. Don't rely on
+examples to teach an exclusion: an output shows *that* a field is null, not *why*, so the model may learn the wrong
+pattern.
 
 Now suppose the first extraction of `INV-2` misreads the total as `1.23456`. `validateExtraction` sums the line items
 (`225.00 + 1009.56 = 1234.56`) and reports:
@@ -744,7 +745,7 @@ fixed number of rounds.
 | Include **concrete input → expected output** examples for failing cases | Describe the desired behaviour only in abstract terms |
 | Keep history and return the **best** prompt; stop at the target or after N rounds | Accept the latest revision; loop forever |
 
-### Worked example: one round on the AP inbox
+### Worked example: one round on the invoice inbox
 
 `evaluate` checks seven `KEY_FIELDS` (`document_type`, `invoice_number`, `po_number`, `issue_date`, `due_date`,
 `currency`, `total_amount`) on each of the seven everyday documents: 49 checks. Suppose round 1 finds six failures,
@@ -823,12 +824,12 @@ make the cost predictable.
 
 Here's the whole inbox flowing through the pipeline you build in Lessons 3–6, with each idea in its place.
 
-1. **Method.** `chooseOutputMethod({ strictness: 'guaranteed', model: 'claude-haiku-5-5' })` returns
-   `'json_outputs'`, so every request uses `output_config.format`. No prefill, no prompt-only JSON (section 1).
+1. **Method.** The records feed an import that must never fail to parse, and Haiku 5.5 supports structured outputs,
+   so every request uses `output_config.format`. No prefill, no prompt-only JSON (section 1).
 2. **Schema.** Required + nullable fields, enums with `"other"` and `null`, `ambiguous_fields`, and nothing
    structured outputs would reject (section 2).
 3. **Prompt.** Normalisation rules with before → after examples, `<include>`/`<exclude>` boundaries with reasons
-   and safe outputs, and three diverse few-shot examples chosen by trait coverage (sections 3–4).
+   and safe outputs, and a fixed set of three diverse few-shot examples in the system prompt (sections 3–4).
 4. **Everyday documents.** Each is extracted, the `stop_reason` checked, and the record validated in code. `INV-2`'s
    misread total fails the line-sum check, is retried with the specific error, and passes on attempt 2. `INV-5` comes
    back with `issue_date` and `currency` null and flagged as ambiguous, ready for Part 3's review routing.

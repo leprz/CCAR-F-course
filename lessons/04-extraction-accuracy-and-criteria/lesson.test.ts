@@ -41,21 +41,19 @@ describe('TODO(2) explicit inclusion / exclusion boundaries', () => {
 });
 
 describe('TODO(3) few-shot examples', () => {
-  const target = invoiceDoc('INV-2');
-  const picked = lesson.selectFewShotExamples(invoiceDocs, target, 3);
-  it('never uses the target document as its own example', () => {
-    expect(picked.map((d) => d.id)).not.toContain(target.id);
-    expect(picked).toHaveLength(3);
-  });
-  it('maximises trait coverage', () => {
-    expect(new Set(picked.flatMap((d) => d.traits)).size).toBeGreaterThanOrEqual(11);
-  });
+  const picked = lesson.FEW_SHOT_EXAMPLES;
   it('wraps examples in <examples>/<example> tags with parseable expected output', () => {
     const rendered = lesson.formatExamples(picked);
     expect(rendered).toMatch(/^<examples>/);
     expect(rendered.match(/<example>/g)).toHaveLength(3);
     const outputs = [...rendered.matchAll(/<output>\s*([\s\S]*?)\s*<\/output>/g)].map((m) => JSON.parse(m[1]!));
     expect(outputs).toEqual(picked.map((d) => d.expected));
+  });
+  it('sends the same examples in the system prompt for every document, not in the user turn', () => {
+    const [a, b] = [lesson.buildRequest(invoiceDoc('INV-1'), picked), lesson.buildRequest(invoiceDoc('INV-8'), picked)];
+    expect(String(a.system)).toContain(lesson.formatExamples(picked));
+    expect(a.system).toEqual(b.system);
+    expect(JSON.stringify(a.messages)).not.toContain('<example>');
   });
 });
 

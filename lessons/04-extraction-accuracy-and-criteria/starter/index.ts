@@ -3,6 +3,7 @@ import { modelFromEnv, type MessageCreator } from '../../../lib/claude.ts';
 import {
   CURRENCIES,
   INVOICE_JSON_SCHEMA,
+  invoiceDoc,
   type InvoiceDoc,
   type InvoiceExtraction,
 } from '../../../fixtures/invoices/index.ts';
@@ -43,14 +44,12 @@ export function buildSystemPrompt(scope: Scope, examples: InvoiceDoc[]): string 
 }
 
 /**
- * TODO(3): pick n few-shot examples that together cover as many distinct `traits` as possible.
- * Never include the document being extracted.
+ * Few-shot examples, hand-picked once and sent with every request (so the system prompt stays cacheable):
+ * Polish decimals, a credit note, a handwritten note. Kept out of the documents the live test scores.
  */
-export function selectFewShotExamples(pool: InvoiceDoc[], _target: InvoiceDoc, n: number): InvoiceDoc[] {
-  return pool.slice(0, n);
-}
+export const FEW_SHOT_EXAMPLES: InvoiceDoc[] = ['INV-8', 'INV-3', 'INV-4'].map(invoiceDoc);
 
-/** TODO(3b): wrap the examples in <examples>/<example> tags, with the document and its expected JSON output. */
+/** TODO(3): wrap the examples in <examples>/<example> tags, with the document and its expected JSON output. */
 export function formatExamples(examples: InvoiceDoc[]): string {
   return examples.map((e) => `${e.text}\n=> ${JSON.stringify(e.expected)}`).join('\n\n');
 }
@@ -95,7 +94,7 @@ export async function extractWithValidation(
   doc: InvoiceDoc,
   opts: { examples?: InvoiceDoc[]; maxAttempts?: number; model?: string } = {},
 ): Promise<ValidatedExtraction> {
-  const request = buildRequest(doc, opts.examples ?? [], opts.model);
+  const request = buildRequest(doc, opts.examples ?? FEW_SHOT_EXAMPLES, opts.model);
   const messages: MessageParam[] = [...request.messages];
   const response = await client.messages.create({ ...request, messages });
   const block = response.content.find((b) => b.type === 'text');

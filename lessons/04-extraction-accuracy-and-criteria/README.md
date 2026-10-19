@@ -19,8 +19,8 @@ Edit `starter/index.ts`:
 
 1. `NORMALIZATION_RULES`: one canonical form per value type, with concrete before→after examples.
 2. `SCOPE` + `buildSystemPrompt`: `<include>` and `<exclude>` sections. Each exclusion gives a reason and the safe alternative output.
-3. `selectFewShotExamples` + `formatExamples`: pick a few **diverse** examples (greedy trait coverage), never the target document itself,
-   and wrap them in `<examples>`/`<example>` tags.
+3. `formatExamples`: wrap the given `FEW_SHOT_EXAMPLES` (document + expected JSON) in `<examples>`/`<example>` tags. They go in
+   the system prompt, identical for every document. *Choosing* examples is covered by the Part 2 quiz, not by code.
 4. `validateExtraction`: deterministic checks the schema can't express (date format, line-item sum, credit-note sign).
 5. `extractWithValidation`: retry with the *specific* validation errors as feedback, and return any remaining issues instead of throwing.
 

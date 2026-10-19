@@ -50,50 +50,10 @@ export const INVOICE_SCHEMA: Record<string, unknown> = {
   required: ['document_type', 'vendor_name', 'total_amount'],
 };
 
-/** Keywords structured outputs rejects with a 400 (numeric/string/array constraints). */
-export const UNSUPPORTED_KEYWORDS = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'maxItems'] as const;
-
-/**
- * TODO(2): walk a JSON schema and report what structured outputs would reject, as `"<path>: <keyword>"`.
- * Path is dot-separated from the root ("" for the root itself), e.g. "properties.total: minimum".
- * Report: any UNSUPPORTED_KEYWORDS, `minItems` above 1, and object nodes whose additionalProperties is not false.
- * Recurse into `properties.*` and `items`.
- */
-export function findUnsupportedKeywords(_schema: unknown, _path = ''): string[] {
-  return [];
-}
-
-export interface ModelCaps {
-  structuredOutputs: boolean;
-  forcedToolChoice: boolean;
-  prefill: boolean;
-}
-
-/** Capability snapshot from the docs (checked 2026-10-18). */
-export const MODEL_CAPS: Record<string, ModelCaps> = {
-  'claude-haiku-5-5': { structuredOutputs: true, forcedToolChoice: true, prefill: false },
-  'claude-opus-5-5': { structuredOutputs: true, forcedToolChoice: false, prefill: false },
-  'claude-sonnet-5-5': { structuredOutputs: true, forcedToolChoice: false, prefill: false },
-  // A legacy model from before structured outputs, kept to practise the classic pattern.
-  'claude-3-7-sonnet': { structuredOutputs: false, forcedToolChoice: true, prefill: true },
-};
-
-export type OutputMethod = 'json_outputs' | 'forced_tool' | 'prompt_only' | 'prefill';
-
-/**
- * TODO(3): pick the MOST RELIABLE method that the model supports for the strictness required.
- *  - 'best_effort'  → the cheapest method that usually works
- *  - 'guaranteed'   → only methods that enforce the schema; consult MODEL_CAPS
- * Throw if the model cannot guarantee a schema at all.
- */
-export function chooseOutputMethod(need: { strictness: 'guaranteed' | 'best_effort'; model: string }): OutputMethod {
-  return MODEL_CAPS[need.model]?.prefill ? 'prefill' : 'prompt_only';
-}
-
-/** TODO(4a): tell the model what to do when a value is absent or ambiguous. */
+/** TODO(2a): tell the model what to do when a value is absent or ambiguous. */
 export const SYSTEM_PROMPT = 'You extract data from accounts-payable documents. Return the result as JSON.';
 
-/** TODO(4b): request schema-constrained output with structured outputs (`output_config`). */
+/** TODO(2b): request schema-constrained output with structured outputs (`output_config`). */
 export function buildExtractionRequest(doc: InvoiceDoc, model = modelFromEnv()): MessageCreateParamsNonStreaming {
   return {
     model,
@@ -109,7 +69,7 @@ export function buildExtractionRequest(doc: InvoiceDoc, model = modelFromEnv()):
 export class ExtractionError extends Error {}
 
 /**
- * TODO(5): the schema guarantee only holds for complete responses. Throw ExtractionError for responses
+ * TODO(3): the schema guarantee only holds for complete responses. Throw ExtractionError for responses
  * that may not match the schema, before parsing.
  */
 export function parseExtraction(message: Message): InvoiceExtraction {

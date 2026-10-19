@@ -6,7 +6,7 @@
 
 ## Situation
 
-Northwind's AP team wants every incoming document turned into an `InvoiceExtraction` record. The current integration
+Northwind's accounts-payable team (the people who pay supplier bills) wants every incoming document turned into an `InvoiceExtraction` record. The current integration
 asks for "JSON", prefills `{`, and parses the text. On current models the prefill alone returns a 400 error. Even on models that
 accept it, the schema forces values the documents don't contain: a contract has no invoice number, a German invoice has no
 PO (purchase order number), and one invoice states no currency. The model fills those gaps with plausible inventions.
@@ -16,11 +16,10 @@ PO (purchase order number), and one invoice states no currency. The model fills 
 Edit `starter/index.ts`:
 
 1. `INVOICE_SCHEMA`: make every field required **and** nullable where the value can be absent, give the enums escape values
-   (`"other"`, `null`), add `ambiguous_fields`, and keep it within what structured outputs accepts.
-2. `findUnsupportedKeywords`: report schema features that structured outputs rejects with a 400 error.
-3. `chooseOutputMethod`: pick the most reliable method a model supports for the strictness required.
-4. `SYSTEM_PROMPT` + `buildExtractionRequest`: no prefill, use `output_config.format`, and tell the model to return null and flag ambiguity.
-5. `parseExtraction`: don't trust a response whose `stop_reason` is `refusal` or `max_tokens`.
+   (`"other"`, `null`), add `ambiguous_fields`, and keep it within what structured outputs accepts (no `minimum`,
+   `maxLength`, `maxItems`, `minItems` above 1; every object `additionalProperties: false`; put such rules in `description`).
+2. `SYSTEM_PROMPT` + `buildExtractionRequest`: no prefill, use `output_config.format`, and tell the model to return null and flag ambiguity.
+3. `parseExtraction`: don't trust a response whose `stop_reason` is `refusal` or `max_tokens`.
 
 ```bash
 npx vitest lessons/03

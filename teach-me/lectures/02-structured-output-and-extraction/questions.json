@@ -223,6 +223,35 @@
       "prompt": "With structured outputs enabled, the extracted values are guaranteed to be correct, so validation in code is unnecessary.",
       "correct": false,
       "explanation": "Structured outputs guarantees the shape (it parses and matches the schema), not the truth of the values. Checks such as line items summing to the total still catch value errors, and the guarantee doesn't hold for `refusal` or `max_tokens` responses."
+    },
+    {
+      "id": "q15",
+      "type": "multiple-choice",
+      "difficulty": "apply",
+      "objectives": [
+        "O29"
+      ],
+      "prompt": "A pipeline extracts data from 20,000 supplier invoices a day. Its system prompt (rules plus few-shot examples) is cached. A teammate proposes choosing 3 examples per request from the labelled evaluation set, picking the ones most similar to each incoming invoice. What is the BEST response?",
+      "options": [
+        "Adopt it: examples most similar to the input always beat a fixed set, and the extra cost per request is negligible.",
+        "Keep a fixed, hand-picked set of 3–5 diverse examples that cover the hard cases, kept out of the evaluation set, in the system prompt.",
+        "Drop the few-shot examples and rely on the normalisation rules alone, since examples cost tokens on every request.",
+        "Use the 5 most common invoice layouts as the examples, since together they cover most of the daily traffic."
+      ],
+      "correctIndex": 1,
+      "explanation": "A fixed set keeps the system prompt identical, so caching keeps working; per-request selection changes the prompt on every call. Drawing examples from the evaluation set also leaks answers into the test, so accuracy looks better than it is. Dropping examples gives up one of the most reliable ways to steer output format and tricky conversions. The most common layouts are more of the easy case; the docs ask for diverse examples that cover edge cases."
+    },
+    {
+      "id": "q16",
+      "type": "true-false",
+      "difficulty": "analyze",
+      "objectives": [
+        "O31",
+        "O29"
+      ],
+      "prompt": "If every few-shot example shows `due_date: null` for invoices that say \"pay within 15 days\", a separate `<exclude>` rule against computing due dates is unnecessary.",
+      "correct": false,
+      "explanation": "An example shows that the field is null, not why. The model may learn the wrong pattern, such as null only for \"15 days\", or null for every due date. A rule names the category, the reason and the safe output (null, keep the terms in payment_terms); the examples then demonstrate it. For categories where the model is unreliable, the exam answer is explicit criteria, not more examples."
     }
   ]
 }
