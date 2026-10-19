@@ -7,6 +7,9 @@ Decisions were made in a grill-me session on 2026-10-18. Live status is in `prog
 
 ## Decisions
 
+> 2026-10-19: `COVERAGE.md` and `npm run coverage` were removed. Decisions 5 and 11 still hold otherwise: per-objective
+> results live in the portal (results screen, mock exam, *Export progress*).
+
 | # | Decision | Choice |
 |---|----------|--------|
 | 1 | Source of truth | The score report's 37 objectives (below), with IDs O01–O37 in report order |
@@ -28,7 +31,7 @@ Decisions were made in a grill-me session on 2026-10-18. Live status is in `prog
 - Structural tests **fail** against `starter/` and **pass** with `SOLUTION=1`.
 - `npx tsc --noEmit` passes.
 - Live test passes with `SOLUTION=1 npm run test:live -- <lesson>` (run at least once when the lesson is built).
-- Lesson README links its doc section(s) and lists its objective IDs. `COVERAGE.md` is updated.
+- Lesson README links its doc section(s) and lists its objective IDs.
 
 ## Planned layout
 

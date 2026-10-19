@@ -12,7 +12,6 @@
     "test:solution": "SOLUTION=1 vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "typecheck": "tsc --noEmit",
-    "coverage": "tsx scripts/coverage.ts",
     "gate": "tsx scripts/gate.ts"
   },
   "devDependencies": {

@@ -7,6 +7,8 @@ The plan and decisions are in `plan.md`. Update this file whenever a step finish
 **Phase 4 done: all 22 lessons and 8 lectures are built** (2026-10-18). Everything is in place except the Part 8 quiz (see *Open items*).
 Next: the learner works through the lessons in order; live tests run once there's an API key.
 
+2026-10-19: `COVERAGE.md`, `scripts/coverage.ts` and `npm run coverage` removed at the learner's request.
+
 ## Phases
 
 - [x] Phase 0: grill-me planning, `plan.md`

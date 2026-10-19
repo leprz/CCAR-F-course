@@ -9,8 +9,6 @@ pairs topic lectures with hands-on TypeScript lessons and quizzes, all mapped to
 
 - `plan.md`: decisions, the objective list with last scores, and the 8 parts / 22 lessons. **Read it before adding content.**
 - `progress.md`: live status. **Update it whenever a step finishes**, so work can resume in a fresh session.
-- `COVERAGE.md`: objective → doc → lesson → latest quiz score. The rows between the `coverage:start`/`coverage:end` markers
-  are machine-edited by `scripts/coverage.ts`.
 
 ## Commands
 
@@ -23,7 +21,6 @@ npm run test:live -- lessons/01           # real API; needs ANTHROPIC_API_KEY in
 npm run typecheck                         # tsc --noEmit, strict; type-checks starters AND solutions
 npm run gate [-- 01 02]                   # quality gate: starter must fail, solution must pass
                                           # (the learner edits starters in place: a solved lesson reports "starter passes"; that's expected, not a bug)
-npm run coverage                          # merge ./progress.json (exported from the quiz portal) into COVERAGE.md
 ```
 
 Quiz portal: invoke the project skill `/teach-me` (vendored in `.claude/skills/teach-me/`, always uses the `./teach-me/` root),
@@ -69,5 +66,5 @@ or run `bash .claude/skills/teach-me/scripts/serve.sh teach-me` and open `index.
   the classic pattern the exam tests (for example forced `tool_choice` on 5.5 models), teach both and say which is which.
 - SDK versions are pinned exactly in `package.json`. Use the SDK's real types so outdated field names fail `tsc`.
 - A lesson is done only when `npm run gate -- NN` passes, `npm run typecheck` passes, the README/WHY/lecture/quiz exist, and
-  `COVERAGE.md` and `progress.md` are updated. Run the live test when a key is available, and record it in `progress.md` if not.
+  `progress.md` is updated. Run the live test when a key is available, and record it in `progress.md` if not.
 - `package.json` is `"type": "module"`. The portal's `site/app.js` is a browser script, so node can't `require` it from inside the repo.

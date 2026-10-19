@@ -286,7 +286,7 @@ directly. Do not touch `lecture.md`.
 ## 9b. Rewrite (`--rewrite <slug>`)
 
 Upgrades an existing lecture to the current template without changing its slug,
-so links, quiz scores and `COVERAGE.md` rows keep working. This is the one case
+so links and saved quiz scores keep working. This is the one case
 where a lecture is overwritten (§2), and it happens only when the user asks.
 
 1. Locate the lecture (§7). Read it, its `questions.json`, the template, and the
@@ -359,11 +359,6 @@ stores:
   }
 }
 ```
-
-Save it to the repo root and run `npx tsx scripts/coverage.ts [progress.json]
-[COVERAGE.md]` (the plan wires this up as `npm run coverage`). It rewrites only the table between
-`<!-- coverage:start -->` and `<!-- coverage:end -->` in `COVERAGE.md`, filling
-the `Latest quiz` column with `NN% (c/t, YYYY-MM-DD)`; rows without data keep `–`.
 
 ---
 

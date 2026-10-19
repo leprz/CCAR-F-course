@@ -32,9 +32,8 @@ For each part, in order:
    npx vitest run lessons/01 -t "TODO\(3\)"   # one TODO group (-t is a regex)
    ```
    Stuck? `solution/index.ts` is the reference, and `solution/WHY.md` explains each decision and the exam signal behind it.
-3. **Take the part's quiz**, then the **mock exam** once you've covered several parts.
-4. **Track coverage.** Use *Export progress* in the portal to download `progress.json` into the repo root, then run
-   `npm run coverage` to write your latest scores into [`COVERAGE.md`](COVERAGE.md).
+3. **Take the part's quiz**, then the **mock exam** once you've covered several parts. Results are broken down by
+   objective, and *Export progress* downloads your latest result per objective as `progress.json`.
 
 ### The study portal
 
@@ -61,7 +60,7 @@ sample document in a popup, so you can read the invoice or ticket the chapter is
 | 7 | MCP | L17 resources vs tools · L18 server scope, auth, discovery |
 | 8 | Claude Code configuration | L19 config mechanisms and `context: fork` · L20 review configs · L21 plan mode and CI · L22 exploration and test generation |
 
-The objective behind each lesson is listed in [`plan.md`](plan.md) and [`COVERAGE.md`](COVERAGE.md).
+The objectives behind each lesson are listed in [`plan.md`](plan.md).
 
 ## Commands
 
@@ -72,7 +71,6 @@ The objective behind each lesson is listed in [`plan.md`](plan.md) and [`COVERAG
 | `npm run test:live -- lessons/01` | Real API calls. Needs `ANTHROPIC_API_KEY`; skipped without it. Uses `CLAUDE_MODEL` (default `claude-haiku-5-5`). |
 | `npm run typecheck` | `tsc --noEmit` over starters and solutions. |
 | `npm run gate [-- 01 02]` | Quality gate: each starter must fail and each solution must pass. Once you've solved a lesson it reports "starter passes", which is expected. |
-| `npm run coverage` | Merge `./progress.json` from the portal into `COVERAGE.md`. |
 
 ## Layout
 
@@ -86,10 +84,9 @@ fixtures/               shared scenario data
   codebase/             a small buggy TypeScript API for the review lessons
 teach-me/               the study portal: lectures/<part>/lecture.md + questions.json
 lib/                    loadLesson, MessageCreator, FakeClient/RecordingClient for tests
-scripts/                gate.ts, coverage.ts
+scripts/                gate.ts (the quality gate)
 .claude/skills/teach-me the teach-me skill that builds and serves the portal
 plan.md, progress.md    decisions and current status
-COVERAGE.md             objective → lecture → lesson → latest quiz score
 CLAUDE.md               guidance for Claude Code when working on this repo
 ```
 
