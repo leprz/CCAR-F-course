@@ -8,7 +8,11 @@
   - Length follows the subject (see SKILL.md §4 "Length"). Do not pad a narrow topic; do not compress a
     broad one into bullets to hit a number.
   - Keep the skeleton below in order: opening, running example, numbered concept sections, putting it
-    together, summary, traps, going deeper. The number of concept sections is up to the subject (usually 3-7).
+    together, summary, traps, practice (exam-prep repo only), going deeper. The number of concept
+    sections is up to the subject (usually 3-7).
+  - In the exam-prep repo the chapter must read standalone: never mention lessons, starters or solutions
+    in the body ("Here's the request Lesson 7 builds" -> "Here's the batch request"). Lesson pointers go
+    only in the closing Practice section.
   - If the lecture is requested in another language, translate the headings too.
   - Use fenced code blocks with language tags for code and payloads (```json, ```ts). Use ```mermaid for
     flows/sequences/state machines where a picture is genuinely clearer; keep each diagram small.
@@ -28,7 +32,7 @@ tags: [<tag>, <tag>]
 
 <Opening, 2-4 paragraphs, no heading. Start from a concrete problem the reader recognises, not a
 definition. Say why the topic matters and what goes wrong without it. End with what the reader will be
-able to do after this chapter. In the exam-prep repo, follow with the Objectives / Lessons / Sources line.>
+able to do after this chapter. In the exam-prep repo, follow with the Objectives / Sources line.>
 
 ## The running example
 
@@ -79,6 +83,12 @@ in one sentence. This is the only place where terse is the goal.>
 <The nuance that separates understanding from memorising: when NOT to use it, costs, failure modes, and
 scenario -> decision rules ("If you see X, the fix is Y, not Z because…"). In the exam-prep repo, phrase these
 the way the exam frames them and name the tempting wrong answers.>
+
+## Practice
+
+<Exam-prep repo only. One line inviting the reader to build the running example, then one bullet per lesson:
+**Lesson N — <title>** (`lessons/NN-slug/`): what you build or fix. End with a **Quiz:** bullet. Use
+inline-code paths, not links (the portal strips links to lessons/).>
 
 ## Going deeper
 

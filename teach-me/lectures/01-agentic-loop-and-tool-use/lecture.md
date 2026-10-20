@@ -20,16 +20,15 @@ exactly goes into each message, how to *force* a tool when your code depends on 
 another, and how to let Claude do several independent things at once.
 
 By the end of this chapter you'll be able to write a tool-use loop by hand, explain every field in it, and recognise
-the classic failure modes from their symptoms. The two lessons that follow have you build exactly that.
+the classic failure modes from their symptoms.
 
 > **Objectives:** O01 parallel tool calls · O27 tool use + JSON schema, `tool_choice` to guarantee invocation · O37 `tool_choice` + sequencing dependent tools
-> **Lessons:** [Lesson 1](../../../lessons/01-tool-loop-and-tool-choice/) · [Lesson 2](../../../lessons/02-parallel-tool-calls/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0.
 
 ## The running example
 
-Throughout this chapter we'll work on one system: the support desk of a small online shop. It's the same data the
-lessons use (`fixtures/support/`).
+Throughout this chapter we'll work on one system: the support desk of a small online shop. Its data lives in
+`fixtures/support/`.
 
 The shop has three customers:
 
@@ -384,7 +383,7 @@ Before:
 }
 ```
 
-After (this is the lesson's solution):
+After:
 
 ```ts
 {
@@ -456,7 +455,7 @@ behaviour, while the schema *enforces* it.
 
 ### The problem
 
-Here's the integration as it existed before the lesson. It asked Claude to "reply only with JSON" and did this:
+Here's the shop's original integration. It asked Claude to "reply only with JSON" and did this:
 
 ```ts
 const triage = JSON.parse(response.content[0].text); // 💥 sometimes
@@ -514,8 +513,8 @@ pattern** above: "force the tool with `tool_choice` to guarantee it is called". 
 
 - **Claude Opus 5.5, Sonnet 5.5, Fable 5.1 and Mythos 5.1 reject `any` and `tool` with a 400 error.** On those models,
   use `auto` with `strict: true` tools (which guarantees schema-valid inputs, though not that a tool is called), or use
-  **structured outputs** when you need a reply in a fixed JSON shape. Claude Haiku 5.5, our lesson default, still
-  accepts forcing.
+  **structured outputs** when you need a reply in a fixed JSON shape. Claude Haiku 5.5, the model in this chapter's
+  examples, still accepts forcing.
 - **Manual extended thinking** (`thinking: { type: "enabled" }`) doesn't allow `any` or `tool`.
 - On models that accept forcing, **a forced call skips thinking**: the response starts with the `tool_use` block. To
   let Claude think first, use `auto` plus an instruction.
@@ -575,7 +574,7 @@ You have three levers, from weakest to strongest. In practice you combine them.
 Add one more sentence to the system prompt so a dependent pair is never batched together: *"Only batch tool calls that
 are independent of each other."*
 
-The lesson's `toolChoiceFor` puts the whole policy in one small function:
+A small `toolChoiceFor` helper puts the whole policy in one small function:
 
 ```ts
 export function toolChoiceFor(step: { turn: number; phase: 'investigate' | 'finalize' }): ToolChoice {
@@ -598,7 +597,7 @@ model.
 | 2 | `auto` | Ends its turn, or calls `record_triage` itself | (finalize if needed) |
 | 3 | `tool: record_triage` *(only if turn 2 was prose)* | `record_triage({ category: "billing", priority: "urgent", … needs_human: true })` | done |
 
-Turn 2 is where the lesson's loop has a safety net. If Claude answers in prose instead of calling `record_triage`, the
+Turn 2 is where the loop needs a safety net. If Claude answers in prose instead of calling `record_triage`, the
 loop doesn't hand that prose to the helpdesk. It appends Claude's turn, adds a short user message ("Record your triage
 decision now."), and makes one more request with the forced `record_triage`.
 
@@ -628,7 +627,7 @@ already written before the first result existed. The fix is in the prompt and th
 
 ### The problem
 
-Ticket T-101: Ana asks about three orders. The order-status bot from Lesson 2 has a `get_order(order_id)` tool. In
+Ticket T-101: Ana asks about three orders. The shop's order-status bot has a `get_order(order_id)` tool. In
 the broken version, the logs show this:
 
 ```text
@@ -672,7 +671,7 @@ Your code answers with **one** user message containing all three results, each m
 
 and the next response is the answer. That's two model calls instead of four.
 
-When parallel calls *don't* happen, there are four usual suspects, and Lesson 2 has one bug for each:
+When parallel calls *don't* happen, there are four usual suspects:
 
 1. **It's switched off.** `disable_parallel_tool_use: true` caps each response. Note *where* it lives: **inside
    `tool_choice`**, not as a top-level request parameter. With `auto` it means *at most one* tool call per response.
@@ -719,8 +718,8 @@ ids, which keeps the history easy to read (matching is by `tool_use_id`, so the 
 debugging easier).
 
 **Measuring it.** Count `tool_use` blocks per tool-calling response and average them. 1.0 means everything is serial,
-and anything above means some batching is happening. For T-101 you'd hope to see 3.0. Lesson 2's live test checks
-that the average is above 1.
+and anything above means some batching is happening. For T-101 you'd hope to see 3.0. A practical check against the real model is that the
+average stays above 1.
 
 ### When *not* to run in parallel
 
@@ -750,8 +749,8 @@ step-by-step audit trail. It trades latency for control.
 
 ## 7. Putting it together
 
-Here's ticket T-100 one more time, end to end, with every idea from this chapter in place. (You'll write this code
-yourself in Lesson 1 and Lesson 2, so this is the narrated run rather than the full solution.)
+Here's ticket T-100 one more time, end to end, with every idea from this chapter in place. This is the narrated run
+rather than the full code.
 
 1. **Setup.** The request has the system prompt ("Investigate with the tools, then call record_triage. Only batch
    tool calls that are independent of each other."), three tools with full descriptions, and `record_triage`'s
@@ -812,6 +811,20 @@ problem without knowing what it does underneath.
 
 And one trap about over-engineering: **don't force where judgement is the point.** Forcing every turn removes Claude's
 ability to decide what to investigate, and can trap the loop. Force only where a contract demands it.
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: a triage loop for the support desk
+that forces the right tools at the right moments, and an order-status bot that batches independent lookups.
+
+- **Lesson 1 — Tool-use loop, `tool_choice`, dependent tool sequencing** (`lessons/01-tool-loop-and-tool-choice/`):
+  fix the triage integration so tool descriptions state the prerequisite, the `record_triage` schema enforces the
+  contract, `tool_choice` forces `lookup_customer` first and `record_triage` last, and the loop sends back instructive
+  `is_error` results.
+- **Lesson 2 — Parallel tool calls in one turn** (`lessons/02-parallel-tool-calls/`): find what stops the order-status
+  bot from batching its `get_order` calls, run a turn's calls concurrently, send every result in one user message, and
+  measure tool calls per response.
+- **Quiz:** 10 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 

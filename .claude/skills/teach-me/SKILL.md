@@ -127,6 +127,11 @@ the topic from the lecture alone, the way they would from a good technical book:
   the matching `fixtures/<scenario>/` data and the lesson's code) and grow it
   through every section, so each new concept is shown changing something the
   reader already understands.
+- **Standalone reading.** In this repo, the lecture body never mentions lessons,
+  starters or solutions ("Here's the request Lesson 7 builds", "the first version
+  of Lesson 7"). The reader finishes the chapter without switching context; lesson
+  pointers and the quiz go only in a closing `## Practice` section before
+  *Going deeper*.
 - **Show the real thing.** Concrete requests, responses, payloads and code that
   the reader can trace by hand, followed by a walkthrough of what to notice.
 - **Show failure, not just success.** For each concept, show the common mistake

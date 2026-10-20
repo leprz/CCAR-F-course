@@ -26,7 +26,6 @@ batch correctly from submission to retry, and design a review router that sends 
 with reasons, and that you can measure.
 
 > **Objectives:** O23 Messages API vs Message Batches API · O22 human review routing by confidence, document characteristics and field ambiguity
-> **Lessons:** [Lesson 7](../../../lessons/07-messages-vs-batches/) · [Lesson 8](../../../lessons/08-human-review-routing/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0.
 
 ## The running example
@@ -109,7 +108,7 @@ stateDiagram-v2
 
 ### Worked example: submitting INV-1 and INV-3
 
-Here's the request Lesson 7 builds for two documents. Notice that `params` is the same object the synchronous extractor
+Here's the batch request for two documents. Notice that `params` is the same object the synchronous extractor
 sends. That's deliberate: you can test the shape with one synchronous call before submitting ten thousand.
 
 ```ts
@@ -142,7 +141,7 @@ You can't watch individual requests finish one at a time.
 
 ### What goes wrong
 
-**An invalid `custom_id`.** The first version of Lesson 7 built ids like `INV-1/us-date`. The slash isn't allowed, and the
+**An invalid `custom_id`.** A natural first attempt builds ids like `INV-1/us-date`. The slash isn't allowed, and the
 batch is rejected. Real keys often contain slashes, spaces or are longer than 64 characters (`FV/2026/03/112` is a real
 Polish invoice number), so sanitise them and check they're unique:
 
@@ -171,7 +170,7 @@ the *non-streaming* request shape.
 
 ### The problem
 
-The tempting rule is "lots of requests → batch, a few → sync". The first version of Lesson 7 used exactly that rule
+The tempting rule is "lots of requests → batch, a few → sync". A natural first version of the pipeline used exactly that rule
 (`requestCount > 100`), and it made two mistakes. It sent a 300-file pre-merge CI review to a batch, so a developer
 waited hours for a check that blocks their merge. And it sent three month-end invoices to the synchronous API, paying
 double for results nobody needed until the day after tomorrow.
@@ -210,7 +209,7 @@ flowchart TD
 
 ### Worked example: six workloads
 
-Here are the six workloads Lesson 7's tests use, classified with the three questions:
+Here are six workloads, classified with the three questions:
 
 | Workload | Blocking? | Acceptable wait | Client tools? | Mode | Why |
 |---|---|---|---|---|---|
@@ -289,7 +288,7 @@ after you submit it, so a retry is always a **new, smaller batch** of just those
 
 There's one more trap inside `succeeded`. A result can succeed at the transport level and still be unusable: if its
 `stop_reason` is `max_tokens`, the JSON is cut off. Resubmitting the same request gives the same truncation. That's a
-non-retryable failure that needs a bigger `max_tokens` or a split task (Part 2, Lesson 5).
+non-retryable failure that needs a bigger `max_tokens` or a split task (Part 2).
 
 ### Worked example: last night's results
 
@@ -304,7 +303,7 @@ Here's last night's batch file, in the order it actually arrived (shortened):
 ```
 
 Notice that INV-3 arrives before INV-1, so positional matching would have given INV-1 the credit note's
-`total_amount` of −189. Lesson 7's `collectResults` builds a `Map` keyed by `custom_id`, and it produces two failure records:
+`total_amount` of −189. A `collectResults` helper builds a `Map` keyed by `custom_id`, and it produces two failure records:
 INV-4 `expired` (retryable) and INV-5 `invalid_request_error` (not retryable: someone has to look at that request).
 `runBatchExtraction` then submits a second batch containing **only INV-4**. At the end of the run, the code reports the
 permanent failure (INV-5) and the successful extractions, which are handed to the review router in section 4.
@@ -389,7 +388,7 @@ Random sampling still has a job, just a different one. You'll see it in section 
 
 ### Worked example: routing last night's run
 
-Here's what the Lesson 8 router decides for the seven records:
+Here's what the router decides for the seven records:
 
 | Doc | Issues found | Route | Fields to check | Actually wrong? |
 |-----|-------------|-------|-----------------|-----------------|
@@ -441,8 +440,8 @@ confident ones.
 
 Use the three signal families from section 4, and understand what each one is good for.
 
-**Validation catches confident mistakes.** These checks are deterministic: they don't depend on the model at all. In
-Lesson 8:
+**Validation catches confident mistakes.** These checks are deterministic: they don't depend on the model at all. The
+router runs four:
 
 - `sum_mismatch`: the line items don't add up to `total_amount` (within a cent). This catches decimal and thousands
   separator misreads, missed lines and OCR digit errors.
@@ -453,10 +452,10 @@ Lesson 8:
   to fill the gap before anyone pays.
 
 These checks also make good **few-shot targets**: the same rules that route a document can feed the retry-with-feedback
-loop from Part 2 (Lesson 6).
+loop from Part 2.
 
 **Field-level signals catch uncertain reads.** Ask for a confidence per key field in the same structured-output call
-(Lesson 8's `extract.ts` adds a `field_confidence` object next to the extraction). Structured outputs reject `minimum` and
+(for example, a `field_confidence` object next to the extraction). Structured outputs reject `minimum` and
 `maximum`, so the 0–1 range goes in the field description. Then:
 
 - `low_confidence`: any field below the policy threshold. Pick the threshold by **measuring**: run the router on a
@@ -476,7 +475,7 @@ handwriting, credit notes (sign conventions), totals above a value threshold, an
 (`not_invoice`). These come from intake and from the extraction's `document_type`, and they're your best defence when
 the model is confidently wrong in a way no arithmetic check can see.
 
-Each issue also sets a **priority**. In Lesson 8, anything that would move the wrong amount of money (`sum_mismatch`,
+Each issue also sets a **priority**. Here, anything that would move the wrong amount of money (`sum_mismatch`,
 `sign_mismatch`, `high_value`) is high priority, and the queue puts those first. After that come the items with the
 most issues.
 
@@ -567,7 +566,7 @@ items as well would waste audit effort on documents a person is already checking
 
 ### Worked example: scoring last night
 
-With the Lesson 8 router on the seven-document run:
+With the router on the seven-document run:
 
 - Review rate: 5/7 ≈ 71%. That's high, but this is a deliberately hard sample. On a normal day most invoices are
   typed, in one format, from known vendors.
@@ -625,8 +624,7 @@ ground-truth set, pick few-shot examples, and re-tune thresholds.
 
 ## 7. Putting it together
 
-Here's the full overnight pipeline for Northwind, combining both halves of the chapter. You'll build each piece in Lesson 7
-and Lesson 8.
+Here's the full overnight pipeline for Northwind, combining both halves of the chapter.
 
 1. **Choose the mode** (section 2). The extraction job blocks nothing, finance can wait 36 hours, and there's no client
    tool loop, so it runs as a batch.
@@ -684,6 +682,14 @@ chance to discover INV-8's fabricated PO. Total model cost: half the synchronous
 | A field is `null` because the document doesn't state it | Route to a person to decide | Retry until the model fills it in |
 | Estimating the errors the router misses | Random audit of **auto-approved** items | Random audit of everything, or none |
 | Reviewer workload is too high | Measure precision/recall, tune thresholds and signals | Switch to random sampling |
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: the overnight batch run for Northwind's invoices and the review router that decides which extractions a person checks.
+
+- **Lesson 7 — Messages API or Message Batches API?** (`lessons/07-messages-vs-batches/`): fix a pipeline that picks the processing mode by volume, builds invalid `custom_id`s, reads the batch status once, matches results by position and resubmits the whole batch on failure.
+- **Lesson 8 — Routing extractions to human review** (`lessons/08-human-review-routing/`): replace a random 20% review sample with a router built on validation checks, field-level confidence and ambiguity, and document characteristics, then measure it with precision, recall and an audit of auto-approved items.
+- **Quiz:** 12 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 

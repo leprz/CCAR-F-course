@@ -22,16 +22,15 @@ to improve the prompt systematically instead of patching one failure at a time.
 
 By the end of this chapter you'll be able to pick the right output method for a model and a use case, design a schema
 that lets the model say "not in the document", add the accuracy patterns that make values right, split work that
-doesn't fit, and run a refinement loop that converges. The four lessons that follow have you build each piece.
+doesn't fit, and run a refinement loop that converges.
 
 > **Objectives:** O25 choose the output method · O26 extraction schemas that don't force fabrication · O29 accuracy patterns · O31 inclusion and exclusion criteria · O28 truncation by splitting · O12 iterative refinement
-> **Lessons:** [Lesson 3](../../../lessons/03-structured-output-and-extraction-schema/) · [Lesson 4](../../../lessons/04-extraction-accuracy-and-criteria/) · [Lesson 5](../../../lessons/05-truncation-split-and-merge/) · [Lesson 6](../../../lessons/06-iterative-refinement/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0 (`output_config.format`).
 
 ## The running example
 
 Throughout this chapter we'll work on the accounts-payable inbox (the mailbox where suppliers send the bills to be paid) of **Northwind Traders LLC**, a small company
-that receives supplier documents by email and scan. It's the same data the lessons use (`fixtures/invoices/`). Every
+that receives supplier documents by email and scan. The documents live in `fixtures/invoices/`. Every
 document arrives as plain text after OCR, and they are deliberately unalike:
 
 | id | What it is | What makes it tricky |
@@ -142,7 +141,7 @@ The decision rule is: **pick the strictest method the model supports that the us
 
 ### Worked example: extracting `INV-1`
 
-Here is the request the Lesson 3 solution builds for Acme's invoice (schema shortened):
+Here is the request for Acme's invoice (schema shortened):
 
 ```json
 {
@@ -174,7 +173,7 @@ is the JSON:
 ```
 
 No preamble, no code fence, every key present. `JSON.parse` on that text can't fail, *provided the response is
-complete*. That condition is the one thing you still have to check, so the solution's parser looks at `stop_reason`
+complete*. That condition is the one thing you still have to check, so the parser looks at `stop_reason`
 before it trusts anything:
 
 ```ts
@@ -198,7 +197,7 @@ Prefill never appears in the table: it can't guarantee anything, and the current
 
 ### What goes wrong
 
-**Prefill on a current model.** The Lesson 3 starter sends an assistant turn of `"{"` to "help" the model start with JSON.
+**Prefill on a current model.** A typical older integration sends an assistant turn of `"{"` to "help" the model start with JSON.
 On any Claude 4.6+ model the whole request fails with a 400 error before a single token is generated. The fix is to
 delete the prefill and use `output_config.format`.
 
@@ -270,7 +269,7 @@ isn't guaranteed, so compare enum values case-insensitively downstream.
 
 ### Worked example: the schema, and `INV-5`
 
-These are the fields from the Lesson 3 solution that matter here:
+These are the schema fields that matter here:
 
 ```json
 {
@@ -326,7 +325,7 @@ one way, return null for it and list the field in ambiguous_fields."*
 
 **A constraint structured outputs rejects.** A well-meaning schema adds `"total_amount": { "type": "number",
 "minimum": 0 }` to stop negative totals. The request fails with a 400 error, because `minimum` isn't supported. (It
-would also have been wrong: credit notes like `INV-3` are negative.) Lesson 3's tests walk your schema and report such problems
+would also have been wrong: credit notes like `INV-3` are negative.) A small check that walks your schema can report such problems
 before the API does:
 
 ```text
@@ -400,13 +399,13 @@ should be negative. Check them deterministically after extraction. Code is cheap
 
 **4. Retry with the specific error, then route to a human.** When validation fails, don't just ask again. Send the
 model its own output plus the exact failure ("total_amount 1.23456 does not equal the sum of line item amounts
-1234.56") and ask it to re-read the document. Cap the retries (Lesson 4 uses 2 attempts). Whatever still fails is not
+1234.56") and ask it to re-read the document. Cap the retries (2 attempts is a reasonable cap). Whatever still fails is not
 discarded and not force-accepted: it's returned as an open issue so a human can resolve it (Part 3 builds that
 routing).
 
 ### Worked example: `INV-2`, from wrong to right
 
-First, the few-shot examples. Lesson 4 picks them once, by hand, and sends the same three with every document:
+First, the few-shot examples. They are picked once, by hand, and the same three are sent with every document:
 
 | Example | What its output demonstrates |
 |---------|------------------------------|
@@ -416,7 +415,7 @@ First, the few-shot examples. Lesson 4 picks them once, by hand, and sends the s
 
 Three examples that between them cover the conversions and boundaries the rules describe. A fixed set keeps the
 system prompt identical on every request, so prompt caching can reuse it; choosing examples per document would change
-the prompt on every call. And none of the three is among the documents the lesson scores: an example that is also
+the prompt on every call. And none of the three is among the documents the evaluation scores: an example that is also
 a test case gets copied, not extracted. That's why `INV-2`, the document below, isn't an example: its German decimals
 and its IBAN have to be handled by the normalisation rules and the `<exclude>` rule alone.
 
@@ -498,7 +497,7 @@ safe alternative ("don't compute due dates") still leaves the model with a requi
 so it's under pressure to fill the gap anyway. "Output null and keep the terms in `payment_terms`" removes the
 pressure.
 
-Lesson 4's solution keeps the boundaries as data and renders them into tagged prompt sections:
+A good design keeps the boundaries as data and renders them into tagged prompt sections:
 
 ```ts
 export const SCOPE: Scope = {
@@ -822,7 +821,7 @@ make the cost predictable.
 
 ## 7. Putting it together
 
-Here's the whole inbox flowing through the pipeline you build in Lessons 3–6, with each idea in its place.
+Here's the whole inbox flowing through the full pipeline, with each idea in its place.
 
 1. **Method.** The records feed an import that must never fail to parse, and Haiku 5.5 supports structured outputs,
    so every request uses `output_config.format`. No prefill, no prompt-only JSON (section 1).
@@ -880,6 +879,16 @@ explicit list of open issues and ambiguous fields. What you never get is a confi
 
 And one trap about scope: **structured outputs is not an accuracy feature.** It removes parse errors and makes
 `null` expressible; everything about whether the values are *right* is still sections 2–4.
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: fix the accounts-payable extraction pipeline one stage at a time, from the schema to the refinement loop.
+
+- **Lesson 3 — Choosing the output method and designing an extraction schema** (`lessons/03-structured-output-and-extraction-schema/`): replace a prefilled, prompt-only integration with `output_config.format`, make the schema required and nullable with enum escape values and `ambiguous_fields`, and check `stop_reason` before parsing.
+- **Lesson 4 — Extraction accuracy patterns and explicit inclusion/exclusion criteria** (`lessons/04-extraction-accuracy-and-criteria/`): add normalisation rules, `<include>`/`<exclude>` boundaries with reasons, tagged few-shot examples, validation in code and a retry that sends the specific errors.
+- **Lesson 5 — Truncation: split into scoped calls and merge** (`lessons/05-truncation-split-and-merge/`): split the 60-line Globex invoice into a header call and concurrent chunk calls, split any truncated chunk in half, merge by `line_no` and reconcile against the printed count and total.
+- **Lesson 6 — Iterative refinement with examples, targeted feedback and batched issues** (`lessons/06-iterative-refinement/`): score the whole set at field level, send one batched, field-grouped feedback message per round, and return the best prompt seen.
+- **Quiz:** 16 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 

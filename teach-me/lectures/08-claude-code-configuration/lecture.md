@@ -27,13 +27,12 @@ to configure a read-only multi-pass review, choose between plan mode and direct 
 is safe to run unattended, and get Claude to explore and test a codebase economically.
 
 > **Objectives:** O16 choose the config mechanism · O14 `context: fork` · O13 review configurations · O24 specialised review passes · O30 cutting false positives with persistent conventions · O08 plan mode vs direct vs multi-phase · O11 CLI in CI/CD · O32 choosing Grep/Glob/Read/Bash · O17 systematic exploration · O15 test-generation quality
-> **Lessons:** [Lesson 19](../../../lessons/19-config-mechanisms-and-context-fork/) · [Lesson 20](../../../lessons/20-review-configs-and-specialized-passes/) · [Lesson 21](../../../lessons/21-plan-mode-workflows-and-ci/) · [Lesson 22](../../../lessons/22-exploration-tools-and-test-generation/)
 > **Sources checked:** 2026-10-18 against code.claude.com/docs (links in *Going deeper*) and Claude Code 2.1.302 (`claude --help`).
 
 ## The running example
 
-The whole chapter works on one repository: **Ledgerly**, a small order-and-billing API written in TypeScript. It's
-the fixture in `fixtures/codebase/` that the lessons use.
+The whole chapter works on one repository: **Ledgerly**, a small order-and-billing API written in TypeScript. It lives
+in `fixtures/codebase/`.
 
 ```text
 ledgerly/
@@ -386,7 +385,7 @@ Return only JSON: {"findings": [{"category": "security", "severity": "...", "fil
 Notice the description's quotes: it contains `: `, which a YAML parser would otherwise read as a nested mapping.
 "Use proactively" is the phrase the docs recommend to encourage Claude to delegate to a subagent on its own.
 
-In Lesson 20 you build the same thing on the Messages API: three requests, run concurrently, each with system prompt =
+The same thing can be built on the Messages API: three requests, run concurrently, each with system prompt =
 focus + conventions + examples, and `tool_choice` forcing `report_findings`. Merging then drops any finding whose
 category doesn't match its pass and de-duplicates by category, file and line. Scored against `ISSUES.md`, the target
 is high recall on SEC/BIZ/API and **zero** OK-* findings.
@@ -553,7 +552,7 @@ servers with no trust dialog, which matters when CI runs on code from forks.
 ```
 
 Read the gate carefully: a run that hits `--max-turns` produces a result with `subtype: "error_max_turns"`. That is
-a **failed** step, not a review with no findings. Lesson 21's `interpretResult` encodes the same rule in TypeScript, using
+a **failed** step, not a review with no findings. An `interpretResult` helper can encode the same rule in TypeScript, using
 the Agent SDK's own `SDKResultMessage` type so that a renamed field would fail to compile.
 
 ### What goes wrong
@@ -721,7 +720,7 @@ skill. A model told to "make the tests pass" would happily change 1800 to 2000.
 
 The usual mistakes: asking for "100% coverage" (which rewards trivial assertions), letting the model compute
 expected values by running the code (which bakes the bug into the test), giving no existing tests (so you get new
-fixture helpers in every file), and accepting the output unread. A cheap automated gate helps. Lesson 22's `isTrivialTest`
+fixture helpers in every file), and accepting the output unread. A cheap automated gate helps. An `isTrivialTest` check
 flags any test file with no behaviour-pinning assertion before a human spends time on it.
 
 > **Check yourself:** Claude's generated tests for `splitInstalments` all assert `expect(result).toHaveLength(parts)`.
@@ -818,6 +817,16 @@ edits is formatted by the hook, and the `.env` file stays unreadable whatever an
 | Find who calls `authorize(` | Grep | Read every file |
 | Lines 4,000–4,080 of a huge log | Read with offset/limit | Read the whole file, or `cat` via Bash |
 | Generated tests pass but assert nothing | Existing tests as context, rules, explicit criteria, banned trivial assertions | Ask for 100% coverage |
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: configure Ledgerly's Claude Code setup, its review passes, its CI step and its exploration and test-generation helpers.
+
+- **Lesson 19 — Choosing the configuration mechanism, and `context: fork`** (`lessons/19-config-mechanisms-and-context-fork/`): split Ledgerly's overloaded `CLAUDE.md` into path-scoped rules, permission deny rules, a prettier hook and correctly forked or user-invoked skills.
+- **Lesson 20 — Review configurations and specialised review passes** (`lessons/20-review-configs-and-specialized-passes/`): replace a single free-text review prompt with three focused passes that share the conventions, force a findings schema, and merge and de-duplicate their results.
+- **Lesson 21 — Plan mode vs direct execution vs multi-phase, and Claude Code in CI** (`lessons/21-plan-mode-workflows-and-ci/`): choose an approach for each change request, build safe non-interactive CI arguments, and gate the review job on the JSON result.
+- **Lesson 22 — Exploring a codebase, choosing built-in tools, generating good tests** (`lessons/22-exploration-tools-and-test-generation/`): find the unauthorized route with Glob, Grep and small Read windows, then build a test-generation prompt and a check that flags trivial tests.
+- **Quiz:** 18 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 

@@ -23,10 +23,9 @@ descriptions so Claude picks the right one of several similar tools? And how do 
 
 By the end of this chapter you'll be able to look at an agent that wastes turns exploring a server and say which content
 should have been a resource, rewrite a set of look-alike tool descriptions so they route correctly, and review a team's
-`.mcp.json` for scope and secret mistakes. The two lessons that follow have you do each of those in code.
+`.mcp.json` for scope and secret mistakes.
 
 > **Objectives:** O34 MCP resources vs tools · O36 tool descriptions that prevent misrouting · O35 server scope, env-var auth, tool discovery
-> **Lessons:** [Lesson 17](../../../lessons/17-mcp-resources-vs-tools/) · [Lesson 18](../../../lessons/18-mcp-integration-scope-auth/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@modelcontextprotocol/sdk` 1.32.1, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
@@ -36,7 +35,7 @@ premium) with orders `A1001`, `A1002` and `A1003`; Ben (`cus_002`) with a delive
 Chen (`cus_003`) with one cancelled order.
 
 The support team has moved its backend behind an MCP server called **`shop`**. Besides order and customer data, it now
-serves the four **support policies** the agents have to follow (`lessons/17-mcp-resources-vs-tools/shop-data.ts`):
+serves the four **support policies** the agents have to follow:
 
 | topic | title | gist |
 |-------|-------|------|
@@ -45,7 +44,7 @@ serves the four **support policies** the agents have to follow (`lessons/17-mcp-
 | `warranty` | Warranty policy | Electronics carry a 2-year warranty. Claims need the order id and a description of the defect. |
 | `account-security` | Account security | Reset emails expire after 1 hour. Never ask for a password. Locked accounts go to a human. |
 
-The first version of the server (the Lesson 17 starter) offers five **tools**: `list_policies`, `get_policy`, `get_order`,
+The first version of the server offers five **tools**: `list_policies`, `get_policy`, `get_order`,
 `search_orders` and `search_customers`. Each description is two or three words ("List policies.", "Get order.",
 "Search."). Two things go wrong in production:
 
@@ -54,7 +53,7 @@ The first version of the server (the Lesson 17 starter) offers five **tools**: `
    which policy a ticket needs.
 2. The agent mixes up the three data tools. Given "where is my order A1002?", it sometimes calls `search_customers`.
 
-There's a third problem in how the server is wired in (the Lesson 18 starter). The team's committed `.mcp.json` contains live
+There's a third problem in how the server is wired in. The team's committed `.mcp.json` contains live
 API tokens and one developer's personal notes server, and the production Agent SDK service runs with
 `bypassPermissions` and never checks whether the server connected.
 
@@ -204,7 +203,7 @@ The decision rule:
 
 ### Worked example: the `shop` server, rewritten
 
-Here's the resource half of the Lesson 17 solution. The first registration is a direct resource, the index:
+Here's the resource half of the rewritten server. The first registration is a direct resource, the index:
 
 ```ts
 server.registerResource(
@@ -247,8 +246,8 @@ That's the shape a `resources/read` response has on the wire. The `list` callbac
 `shop://policies/refunds`, `shop://policies/shipping` and so on, rather than only the template. And `complete` lets a
 client autocomplete the `{topic}` parameter. With these registered, `list_policies` and `get_policy` are deleted.
 
-On the host side, reading a resource is one protocol call, and no model turn is involved. This is Lesson 17's
-`loadPolicyContext`:
+On the host side, reading a resource is one protocol call, and no model turn is involved. A `loadPolicyContext` helper
+does it:
 
 ```ts
 export async function loadPolicyContext(client: Client, topics: string[]): Promise<string> {
@@ -263,7 +262,7 @@ export async function loadPolicyContext(client: Client, topics: string[]): Promi
 }
 ```
 
-The Lesson 17 tests check exactly this: after `loadPolicyContext`, the server has seen `resources/read` requests and **no**
+You can check this from the server side: after `loadPolicyContext`, the server has seen `resources/read` requests and **no**
 `tools/call`.
 
 In **Claude Code**, resources appear in the `@` autocomplete and can be referenced as `@server:protocol://path`, for
@@ -302,7 +301,7 @@ changes per request, you've rebuilt a tool with extra steps. Keep it a tool.
 ### The problem
 
 After section 2, the `shop` server has three tools left: `get_order`, `search_orders` and `search_customers`. They look
-alike. All three return shop data, and two of them "search". With the starter's descriptions:
+alike. All three return shop data, and two of them "search". With the original descriptions:
 
 ```ts
 server.registerTool('get_order',        { description: 'Get order.',     inputSchema: { order_id: z.string() } }, ...);
@@ -331,7 +330,7 @@ the neighbour draws the boundary explicitly.
 
 ### Worked example: the three descriptions, rewritten
 
-From the Lesson 17 solution:
+The rewritten descriptions:
 
 ```ts
 server.registerTool('get_order', {
@@ -442,7 +441,7 @@ claude mcp get <name>    # one server's details
 
 ### Worked example: sorting the team's servers
 
-Lesson 18's `chooseScope` encodes the decision:
+A `chooseScope` helper encodes the decision:
 
 ```ts
 export function chooseScope(need: { sharedWithTeam: boolean; acrossAllProjects: boolean }): Scope {
@@ -486,7 +485,7 @@ server" scenario, and the fix is to move the server to project scope, not to wri
 
 ### The problem
 
-Project scope means `.mcp.json` is committed. Here's what the Lesson 18 starter's `.mcp.json` looks like:
+Project scope means `.mcp.json` is committed. Here's what the team's first `.mcp.json` looks like:
 
 ```json
 {
@@ -554,7 +553,7 @@ Notice what changed. Both tokens are references now. The URL uses a default, so 
 anything, while someone testing a staging server can set `SHOP_MCP_URL`. And `ana-notes` is gone: it moves to Ana's user
 or local scope.
 
-Lesson 18's `expandEnv` implements the same rules, so you can see them exactly:
+An `expandEnv` function implements the same rules, so you can see them exactly:
 
 ```ts
 export function expandEnv(value: string, env: Record<string, string | undefined>): { value: string; missing: string[] } {
@@ -624,7 +623,7 @@ unusable. `pending` can just mean the server is still connecting or that a cache
 failure by itself. Use `mcpServerStatus()` to check again later.
 
 **At the protocol level.** Any MCP client can call `tools/list` and compare the result with the tools you expect. This
-is how Lesson 17 and Lesson 18 test the server offline.
+works offline too, against an in-process server.
 
 **In Claude Code.** `claude mcp list` shows each server's health, and `/mcp` inside a session shows status and tools. A
 tool whose full name is longer than 128 characters, or whose schema is invalid, is left out, and the reason is logged.
@@ -632,7 +631,7 @@ MCP tool results are capped at 25,000 tokens by default (configurable with `MAX_
 
 ### Worked example: the Agent SDK service, fixed
 
-Lesson 18's `agentOptions` builds the options for the production service:
+The service's `agentOptions` function builds its options:
 
 ```ts
 export function agentOptions(env: Record<string, string | undefined>): Options {
@@ -701,7 +700,7 @@ still produces fluent answers, which is exactly why nobody notices.
 
 ## 7. Putting it together
 
-Here's the whole running example after both lessons, traced through ticket T-100 from Ben.
+Here's the whole running example after every fix, traced through ticket T-100 from Ben.
 
 **Configuration.** The repo's `.mcp.json` defines `shop` and `tickets` in project scope, with `${SHOP_API_TOKEN}` and
 `${TICKETS_API_KEY}` references. Every engineer sets those in their own environment, and `claude mcp list` shows both
@@ -731,7 +730,7 @@ gets back `B2001` (delivered laptop, $899.99) and the refunded `B2002`.
 the refund goes back to the original card within 5 business days. Every fact comes from either the attached policy or
 the live tool result.
 
-Compared with the starter: two discovery turns are gone, the right tool is chosen first time, no secret is in git, and
+Compared with the first version of the server: two discovery turns are gone, the right tool is chosen first time, no secret is in git, and
 a failed server would have stopped the service instead of letting it guess.
 
 ## Summary
@@ -778,6 +777,19 @@ a failed server would have stopped the service instead of letting it guess.
   fail fast. Don't treat `pending` as a failure.
 - *"A local `shop` entry and the project's `shop` entry both exist."* → The local entry wins **as a whole**. Fields
   aren't merged.
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: rewrite the `shop` server's primitives
+and descriptions, then wire it into Claude Code and an Agent SDK service safely.
+
+- **Lesson 17 — MCP resources vs tools, and tool descriptions that prevent misrouting** (`lessons/17-mcp-resources-vs-tools/`):
+  expose the policies as an index resource and a `shop://policies/{topic}` template, delete `list_policies` and
+  `get_policy`, rewrite the three tool descriptions, and have the host read the policies with `loadPolicyContext`.
+- **Lesson 18 — MCP integration: scope, env-var auth, tool discovery** (`lessons/18-mcp-integration-scope-auth/`): replace
+  the committed tokens with `${VAR}` references, implement `chooseScope`, `expandEnv` and `findHardcodedSecrets`, build
+  `agentOptions` with `allowedTools: ['mcp__shop__*']`, and verify discovery with `missingTools` and `unavailableServers`.
+- **Quiz:** 11 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 

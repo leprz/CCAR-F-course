@@ -27,7 +27,6 @@ source-level uncertainty visible. Your two lowest-scoring objectives from the la
 uncertainty-preserving synthesis (O19), get two full sections each.
 
 > **Objectives:** O10 orchestration patterns · O07 dynamic decomposition · O09 state persistence for multi-agent pipelines · O19 synthesis that preserves uncertainty
-> **Lessons:** [Lesson 14](../../../lessons/14-orchestration-patterns-and-dynamic-decomposition/) · [Lesson 15](../../../lessons/15-pipeline-state-persistence/) · [Lesson 16](../../../lessons/16-synthesis-preserving-uncertainty/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
@@ -99,7 +98,7 @@ Take three requests that arrive on the same morning and decide, for each, whethe
    and it's not known up front which claims matter. This is the breadth-first case where parallel workers pay off.
 
 ```ts
-// lessons/14 — the first two rules of choosePattern
+// the first two rules of choosePattern
 if (r.complexity === 'simple' || r.heavySharedContext) return 'single-agent';
 ```
 
@@ -179,7 +178,7 @@ Complex research gets more than 10 subagents with clearly divided responsibiliti
 | "Summarise S1, S2 and S3 separately for the reading group" | no | yes, three known summaries | parallel fan-out, three calls at once |
 | The leadership brief | no | **no**: which claims matter and where the evidence conflicts only shows up once you read | coordinator-worker |
 
-The `lessons/14` function encodes exactly this order:
+A `choosePattern` helper encodes exactly this order:
 
 ```ts
 export function choosePattern(r: Requirements): Pattern {
@@ -288,7 +287,7 @@ flowchart LR
 The fixed-sequence coordinator is the obvious failure, and its symptom is a confident report with blind spots. The
 less obvious failure is the *unbounded* adaptive coordinator. Without a `planned` set, the output conflict spawns a
 new follow-up every round, forever. Without budgets, an interesting lead can eat the whole run. The third failure is
-silent truncation: the budget ends the run, and the brief reads as if it were complete. In `lessons/14`, a
+silent truncation: the budget ends the run, and the brief reads as if it were complete. For example, a
 `maxRounds: 2` run returns `unexplored: [follow-up:on-call, follow-up:collaboration]`, and synthesis can say so.
 
 > **Check yourself:** A due-diligence agent is told to "check the company's financials, litigation history and key
@@ -379,7 +378,7 @@ Now an editor corrects a typo in S9. Its content hash changes, so `collect:S9` r
 hash is unchanged and the report is reused. Nobody wrote that rule. It falls out of hashing inputs.
 
 ```ts
-// lessons/15 — the heart of runPipeline
+// the heart of runPipeline
 const inputHash = hashInput(input);
 const prev = state.tasks[id];
 if (prev?.status === 'done' && prev.inputHash === inputHash) return prev.output;   // reuse
@@ -463,7 +462,7 @@ merged. Then give disagreement and discounting their own fields:
 ```
 
 **Second, weigh sources before you count them.** Not all evidence is equal, and the synthesis step needs the
-metadata to tell. In `lessons/16` each source gets a weight by type: 1.0 for peer-reviewed or government, 0.6 for
+metadata to tell. A simple scheme gives each source a weight by type: 1.0 for peer-reviewed or government, 0.6 for
 a survey, 0.4 for news, 0.15 for a blog, 0.1 for a vendor whitepaper. Anything more than ten years old has its
 weight cut to a quarter. Anything below 0.3 is **discounted**: named, with a reason, but never counted as support. Then
 classify each claim from the *kept* sources. Fewer than two strong sources means insufficient evidence. Kept sources
@@ -489,7 +488,7 @@ made wellbeing look contested, but S7 is discounted as outdated and as a differe
 **well-established**, with S5 and S7 listed under discounted. Notice how much the weighting step matters: without it,
 a 2009 study of 10-hour days would downgrade a well-supported finding about a different policy.
 
-Compare the majority-vote version that the starter code uses. Five of the eight output sources say "no change", which
+Compare a naive majority-vote version. Five of the eight output sources say "no change", which
 is more than half, so it reports output as "well-established: no change". That's the collapse the exam objective
 describes, and it has a respectable-looking justification ("most studies agree").
 
@@ -680,6 +679,15 @@ it's true.
 | Synthesis says "well-established" while good sources disagree | Per-claim status schema + weighted classification + "present both sides" | Ask for a single confidence score |
 | A vendor or anecdotal source drives the headline | Weigh by type and age, discount it with a reason, never cite it as support | Drop it silently |
 | The validator finds several problems | Send all of them in one `is_error` tool result, with a bounded number of revisions | One issue per round trip, or patch the labels in code |
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: the research coordinator, its checkpointed pipeline and the uncertainty-preserving synthesis for the four-day-week brief.
+
+- **Lesson 14 — Orchestration patterns and dynamic decomposition** (`lessons/14-orchestration-patterns-and-dynamic-decomposition/`): pick the simplest structure that fits, apply effort-scaling rules, and turn a fixed-plan coordinator into one that plans each round from leads and conflicts, within budgets, reporting what it left unexplored.
+- **Lesson 15 — Pipeline state persistence and resumption** (`lessons/15-pipeline-state-persistence/`): make the `collect` → `analyze` → `report` pipeline resumable with order-independent input hashes, atomic checkpoint saves, crash recovery and per-task checkpoints that skip finished work.
+- **Lesson 16 — Synthesis that preserves uncertainty** (`lessons/16-synthesis-preserving-uncertainty/`): replace the single-verdict "+40%" brief with a per-claim schema, weighted source classification, a metadata-rich prompt and a validator that sends every issue back in one `is_error` tool result.
+- **Quiz:** 12 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 

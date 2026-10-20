@@ -28,16 +28,15 @@ they're all about those few lines:
 
 By the end of this chapter you'll be able to write an `AgentDefinition` from memory, debug a broken multi-agent
 configuration from its symptoms, and write delegation prompts and output schemas that survive the hand-off in both
-directions. The three lessons that follow have you build all of that.
+directions.
 
 > **Objectives:** O05 tool restrictions, context scoping and system prompts per subagent · O33 tool distribution by role · O06 diagnose misconfigured spawning · O04 goal-oriented vs procedural delegation · O03 complete subagent prompts · O18 subagent output schemas
-> **Lessons:** [Lesson 11](../../../lessons/11-agent-definitions-and-tool-scoping/) · [Lesson 12](../../../lessons/12-diagnose-broken-subagent-spawning/) · [Lesson 13](../../../lessons/13-delegation-prompts-and-output-schemas/)
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
 
 Throughout this chapter we'll build one system: a small research team that answers a question for an engineering
-leadership group. It uses the same data as the lessons (`fixtures/research/`).
+leadership group. Its data lives in `fixtures/research/`.
 
 The question is:
 
@@ -72,7 +71,7 @@ The team has four members:
 - a **web-researcher**, which looks for newer studies on the web, but only for gaps the coordinator names
 - a **report-writer**, which writes `report.md` from the findings it's handed
 
-In Lesson 12 a fifth member, a **fact-checker**, joins in a configuration that doesn't work, and you'll find out why.
+Later in the chapter a fifth member, a **fact-checker**, joins in a configuration that doesn't work, and you'll find out why.
 
 ## 1. What does a subagent actually see?
 
@@ -148,7 +147,7 @@ it has to stand on its own (section 6 is about what goes in it).
 
 While the analyst works, the stream also carries *its* messages. You can tell them apart because they carry
 `parent_tool_use_id: "toolu_01Qx"`, the id of the `Agent` call that started them. The coordinator's own turns have
-`parent_tool_use_id: null`. Lesson 11's `listDelegations` uses exactly that to list which agents the coordinator called:
+`parent_tool_use_id: null`. A `listDelegations` helper uses exactly that to list which agents the coordinator called:
 
 ```ts
 export function isSubagentCall(block: { type: string; name?: string }): boolean {
@@ -225,7 +224,7 @@ That's how you constrain the coordinator, as you'll see in section 3.
 
 ### Worked example: the source-analyst
 
-Here's the analyst from Lesson 11, with the call that registers it:
+Here's the analyst's definition, with the call that registers it:
 
 ```ts
 import { query, type AgentDefinition } from '@anthropic-ai/claude-agent-sdk';
@@ -341,7 +340,7 @@ new spawns are refused with `Budget limit reached`. `CLAUDE_CODE_MAX_CONCURRENT_
 
 ### Worked example: the research team's tool map
 
-Lesson 11 builds the team like this:
+Here's the whole team in code:
 
 ```ts
 export const ROLE_TOOLS: Record<SubagentName, string[]> = {
@@ -380,7 +379,7 @@ web-researcher can't read the local files; the report-writer can read findings a
 looking for new evidence of its own.
 
 `allowedTools` lists every tool any agent uses, because the run is headless. `permissionMode: 'dontAsk'` means that
-anything *not* pre-approved is denied rather than waiting for a human who isn't there. Lesson 11's `effectiveTools` makes the
+anything *not* pre-approved is denied rather than waiting for a human who isn't there. An `effectiveTools` helper makes the
 availability rule concrete:
 
 ```ts
@@ -458,9 +457,9 @@ Each broken link has a recognisable symptom:
 | An agent can't use a tool that's listed | It's also in `disallowedTools` (deny wins), or the agent is at the nesting depth limit, where `Agent` is removed |
 | A call without `subagent_type` fails | `CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS=1` removed `general-purpose` |
 
-### Worked example: the nightly job (Lesson 12)
+### Worked example: the nightly job
 
-Lesson 12 hands you a headless nightly job that's been failing. Here's an excerpt of its configuration:
+A headless nightly job has been failing. Here's an excerpt of its configuration:
 
 ```json
 {
@@ -485,9 +484,9 @@ The second note says that after someone fixed the first problem, "delegation att
 `allowedTools` as well.
 
 Look at the source-analyst once more: its description is `"Analyst"`, and its tools include `"grep"`. You've seen both
-of those faults in sections 2 and 3. Lesson 12 has you write a linter that finds all of them (`diagnose(setup)` returns
-a list of findings) before anyone pays for a run, and then a fixed configuration that the linter passes. There are
-seven symptoms in the incident report, and every one maps to a broken link in the chain above.
+of those faults in sections 2 and 3. A linter can find all of them (a `diagnose(setup)` function that returns a list of
+findings) before anyone pays for a run, and a fixed configuration should pass it. The full incident report lists seven
+symptoms, and every one maps to a broken link in the chain above.
 
 ### What goes wrong
 
@@ -560,7 +559,7 @@ Follow it literally. The analyst reads four sources that all say "maintained", a
 maintained". It never opens S9, the randomised study that found weekly deliverables fell 9%, because step 1 didn't
 list it. The steps encoded the coordinator's *guess* about which sources mattered, and that guess was wrong.
 
-The goal-oriented version (Lesson 13's `chooseDelegationStyle` returns `'goal-oriented'` unless a procedure is mandated):
+The goal-oriented version (a `chooseDelegationStyle` helper returns `'goal-oriented'` unless a procedure is mandated):
 
 ```text
 ## Objective
@@ -627,9 +626,9 @@ A subagent that has to "come back and ask" for any of these is a prompt-design f
 background subagents there may be no way back at all. The cost of a long, explicit delegation prompt is a few hundred
 tokens; the cost of a missing piece is a whole subagent run.
 
-### Worked example: Lesson 13's `buildDelegationPrompt`
+### Worked example: `buildDelegationPrompt`
 
-Lesson 13 builds the prompt from a typed `DelegationTask`, so nothing can be forgotten:
+A `buildDelegationPrompt` helper builds the prompt from a typed `DelegationTask`, so nothing can be forgotten:
 
 ```ts
 export interface DelegationTask {
@@ -739,7 +738,7 @@ a file and return a reference to it, instead of passing everything through the c
 
 ### Worked example: the analyst's report on `output`
 
-Lesson 13's schema, abbreviated:
+The report schema, abbreviated:
 
 ```json
 {
@@ -789,7 +788,7 @@ And a report that satisfies it:
 Notice what synthesis can now do without opening a single source. It can see that two peer-reviewed findings disagree
 on `output`, and how (S9 measured weekly totals, S2 measured per-engineer delivery). It can see the dates and know S9
 is the newest. It knows S6 and S7 were looked at and *why* they were set aside, so a reviewer won't ask "did you
-consider the 40% study?". Lesson 13's `parseSubagentReport(text, knownSourceIds)` rejects a report that cites `S11` or
+consider the 40% study?". A `parseSubagentReport(text, knownSourceIds)` validator rejects a report that cites `S11` or
 omits `source_date`, and `toSynthesisInput` merges several reports into findings grouped by claim, keeping every
 citation. That grouped input is what Part 6's synthesis agent works from.
 
@@ -821,13 +820,12 @@ None of them can be compared. Enums make them comparable.
 
 ## 8. Putting it together
 
-Here's one full run of the research team, with every idea from this chapter in place. (You'll write the pieces yourself
-in Lessons 11–13; this is the narrated run.)
+Here's one full run of the research team, with every idea from this chapter in place.
 
 1. **Configuration (sections 2–4).** `buildOptions` registers four definitions and runs the coordinator as the main
    thread (`agent: 'coordinator'`), with `tools: ['Agent', 'Read', 'Glob']`. Each specialist has its least-privilege
    `tools`, and none has `Agent`. The run is headless, so `allowedTools` pre-approves `Agent` and every role tool, with
-   `permissionMode: 'dontAsk'` and `settingSources: []`. Before launch, Lesson 12's `diagnose()` reports no findings.
+   `permissionMode: 'dontAsk'` and `settingSources: []`. Before launch, the `diagnose()` linter reports no findings.
 2. **Planning.** The coordinator reads `QUESTION.md` (it has `Read`) and plans one analyst task per group of claims.
    It can't search or write, so it delegates.
 3. **Delegation (sections 5–6).** It calls `Agent` twice in one turn (Part 1's parallel tool calls apply here too),
@@ -886,6 +884,15 @@ latency. For a three-file lookup, a direct tool call in the main agent is cheape
 the number of subagents with the complexity of the query. Likewise, tools that are too narrow make agents fail or
 flail (a test runner needs `Bash`), and a huge output schema pasted into every prompt costs tokens on every call, so
 keep it focused on what synthesis actually consumes.
+
+## Practice
+
+You've seen every piece of this chapter's running example. Now build it yourself: configure the research team, debug a broken setup, and write the delegation prompts and report schemas that connect them.
+
+- **Lesson 11 — AgentDefinition, role tools and context scoping** (`lessons/11-agent-definitions-and-tool-scoping/`): fix a research team where every agent has every tool, by giving each specialist least-privilege tools, routing descriptions, a coordinator that can only delegate, and isolated, capped options.
+- **Lesson 12 — Diagnose broken subagent spawning** (`lessons/12-diagnose-broken-subagent-spawning/`): map seven symptoms from a failing nightly job to their configuration faults, write a `diagnose()` linter that finds them, and ship a fixed setup that passes it.
+- **Lesson 13 — Delegation style, self-contained subagent prompts, output schemas** (`lessons/13-delegation-prompts-and-output-schemas/`): replace step-list delegations with goal-oriented prompts that carry the question, scope, prior findings and source metadata, and validate structured subagent reports for synthesis.
+- **Quiz:** 14 exam-style questions on this part in the teach-me portal.
 
 ## Going deeper
 
