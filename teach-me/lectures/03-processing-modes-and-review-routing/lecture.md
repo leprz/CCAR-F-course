@@ -220,20 +220,20 @@ flowchart TD
 
 Here are six workloads, classified with the three questions:
 
-| Workload | Blocking? | Acceptable wait | Client tools? | Mode | Why |
-|---|---|---|---|---|---|
-| Live chat reply | yes (a customer) | seconds | no | **sync** | someone is waiting |
-| Nightly re-triage of 10,000 tickets, due in 36h | no | 36h | no | **batch** | ≥ 24h and non-blocking |
-| Pre-merge CI review of 300 files | yes (the merge) | 15 min | no | **sync** | blocking beats volume |
-| 3 invoices for month-end close, due in 2 days | no | 48h | no | **batch** | small but patient |
-| 5,000-ticket report needed by 9 a.m. (in 4h) | no | 4h | no | **sync** | 4h < the 24h guarantee |
-| 2,000 tickets each needing internal API lookups | no | 48h | yes | **sync** | every tool round trip would be another batch |
+| # | Workload | Blocking? | Acceptable wait | Client tools? | Mode | Why |
+|---|---|---|---|---|---|---|
+| 1 | Live chat reply | yes (a customer) | seconds | no | **sync** | someone is waiting |
+| 2 | Nightly re-triage of 10,000 tickets, due in 36h | no | 36h | no | **batch** | ≥ 24h and non-blocking |
+| 3 | Pre-merge CI review of 300 files | yes (the merge) | 15 min | no | **sync** | blocking beats volume |
+| 4 | 3 invoices for month-end close, due in 2 days | no | 48h | no | **batch** | small but patient |
+| 5 | 5,000-ticket report needed by 9 a.m. (in 4h) | no | 4h | no | **sync** | 4h < the 24h guarantee |
+| 6 | 2,000 tickets each needing internal API lookups | no | 48h | yes | **sync** | every tool round trip would be another batch |
 
-The fifth row is the subtle one. Nothing *blocks* in the technical sense, and a batch would very probably finish in
+Row 5 is the subtle one. Nothing *blocks* in the technical sense, and a batch would very probably finish in
 time. But "very probably" isn't the requirement. If the 9 a.m. report must exist, you need the synchronous API (or the
 batch submitted at least 24 hours earlier).
 
-The last row also shows a hybrid that's often the right design: do the tool lookups **in your own code first**, then put
+Row 6 also shows a hybrid that's often the right design: do the tool lookups **in your own code first**, then put
 the lookup results into each prompt, and the task becomes a single call per ticket that a batch can run.
 
 ### What goes wrong
