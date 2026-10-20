@@ -25,7 +25,17 @@ By the end of this chapter you'll be able to look at an agent that wastes turns 
 should have been a resource, rewrite a set of look-alike tool descriptions so they route correctly, and review a team's
 `.mcp.json` for scope and secret mistakes.
 
-> **Objectives:** O34 MCP resources vs tools · O36 tool descriptions that prevent misrouting · O35 server scope, env-var auth, tool discovery
+> **Objectives:**
+>
+> - O34 MCP resources vs tools
+> - O36 tool descriptions that prevent misrouting
+> - O35 server scope, env-var auth, tool discovery
+>
+> **Lessons:**
+>
+> - Lesson 17 MCP resources vs tools, and tool descriptions that prevent misrouting
+> - Lesson 18 MCP integration: scope, env-var auth, tool discovery
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@modelcontextprotocol/sdk` 1.32.1, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example

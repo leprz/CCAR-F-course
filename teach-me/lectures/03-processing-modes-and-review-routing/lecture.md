@@ -25,7 +25,16 @@ through. By the end of this chapter you'll be able to choose a processing mode f
 batch correctly from submission to retry, and design a review router that sends the *risky* extractions to a person,
 with reasons, and that you can measure.
 
-> **Objectives:** O23 Messages API vs Message Batches API · O22 human review routing by confidence, document characteristics and field ambiguity
+> **Objectives:**
+>
+> - O23 Messages API vs Message Batches API
+> - O22 human review routing by confidence, document characteristics and field ambiguity
+>
+> **Lessons:**
+>
+> - Lesson 7 Messages API or Message Batches API?
+> - Lesson 8 Routing extractions to human review
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0.
 
 ## The running example

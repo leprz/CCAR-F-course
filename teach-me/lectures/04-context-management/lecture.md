@@ -24,7 +24,17 @@ By the end of this chapter you'll be able to keep a long conversation inside a t
 values, explain why a summary alone is not enough, split work that's too big for one context across isolated subagents
 and scratchpad files, and resume a multi-session task without redoing finished work or trusting stale results.
 
-> **Objectives:** O21 context window optimization (summarization, sliding windows, structured state, selective retention) · O20 context across sessions (subagent isolation, scratchpad files, targeted reads) · O02 session resumption (targeted re-analysis of changed files, context injection)
+> **Objectives:**
+>
+> - O21 context window optimization (summarization, sliding windows, structured state, selective retention)
+> - O20 context across sessions (subagent isolation, scratchpad files, targeted reads)
+> - O02 session resumption (targeted re-analysis of changed files, context injection)
+>
+> **Lessons:**
+>
+> - Lesson 9 Context window optimization
+> - Lesson 10 Cross-session context: scratchpads, isolation, resumption
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example

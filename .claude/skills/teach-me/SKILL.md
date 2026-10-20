@@ -131,7 +131,8 @@ the topic from the lecture alone, the way they would from a good technical book:
   starters or solutions ("Here's the request Lesson 7 builds", "the first version
   of Lesson 7"). The reader finishes the chapter without switching context; lesson
   pointers and the quiz go only in a closing `## Practice` section before
-  *Going deeper*.
+  *Going deeper*. The header's `> **Lessons:**` line names the
+  covered lessons as plain text, like the Objectives line, without links.
 - **Show the real thing.** Concrete requests, responses, payloads and code that
   the reader can trace by hand, followed by a walkthrough of what to notice.
 - **Show failure, not just success.** For each concept, show the common mistake

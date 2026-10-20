@@ -32,7 +32,9 @@ tags: [<tag>, <tag>]
 
 <Opening, 2-4 paragraphs, no heading. Start from a concrete problem the reader recognises, not a
 definition. Say why the topic matters and what goes wrong without it. End with what the reader will be
-able to do after this chapter. In the exam-prep repo, follow with the Objectives / Sources line.>
+able to do after this chapter. In the exam-prep repo, follow with a blockquote: an **Objectives:** list and a
+**Lessons:** list (one item per line, lessons as plain text such as `Lesson 7 Messages API or Message Batches API?`,
+never links), then a **Sources checked:** paragraph, separated by `>` blank lines so they don't merge.>
 
 ## The running example
 

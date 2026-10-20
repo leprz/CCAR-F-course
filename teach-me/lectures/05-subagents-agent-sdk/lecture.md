@@ -30,7 +30,21 @@ By the end of this chapter you'll be able to write an `AgentDefinition` from mem
 configuration from its symptoms, and write delegation prompts and output schemas that survive the hand-off in both
 directions.
 
-> **Objectives:** O05 tool restrictions, context scoping and system prompts per subagent · O33 tool distribution by role · O06 diagnose misconfigured spawning · O04 goal-oriented vs procedural delegation · O03 complete subagent prompts · O18 subagent output schemas
+> **Objectives:**
+>
+> - O05 tool restrictions, context scoping and system prompts per subagent
+> - O33 tool distribution by role
+> - O06 diagnose misconfigured spawning
+> - O04 goal-oriented vs procedural delegation
+> - O03 complete subagent prompts
+> - O18 subagent output schemas
+>
+> **Lessons:**
+>
+> - Lesson 11 AgentDefinition, role tools and context scoping
+> - Lesson 12 Diagnose broken subagent spawning
+> - Lesson 13 Delegation style, self-contained subagent prompts, output schemas
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example

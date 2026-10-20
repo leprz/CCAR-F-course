@@ -24,7 +24,22 @@ By the end of this chapter you'll be able to pick the right output method for a 
 that lets the model say "not in the document", add the accuracy patterns that make values right, split work that
 doesn't fit, and run a refinement loop that converges.
 
-> **Objectives:** O25 choose the output method · O26 extraction schemas that don't force fabrication · O29 accuracy patterns · O31 inclusion and exclusion criteria · O28 truncation by splitting · O12 iterative refinement
+> **Objectives:**
+>
+> - O25 choose the output method
+> - O26 extraction schemas that don't force fabrication
+> - O29 accuracy patterns
+> - O31 inclusion and exclusion criteria
+> - O28 truncation by splitting
+> - O12 iterative refinement
+>
+> **Lessons:**
+>
+> - Lesson 3 Choosing the output method and designing an extraction schema
+> - Lesson 4 Extraction accuracy patterns and explicit inclusion/exclusion criteria
+> - Lesson 5 Truncation: split into scoped calls and merge
+> - Lesson 6 Iterative refinement with examples, targeted feedback and batched issues
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0 (`output_config.format`).
 
 ## The running example

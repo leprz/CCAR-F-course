@@ -22,7 +22,17 @@ another, and how to let Claude do several independent things at once.
 By the end of this chapter you'll be able to write a tool-use loop by hand, explain every field in it, and recognise
 the classic failure modes from their symptoms.
 
-> **Objectives:** O01 parallel tool calls · O27 tool use + JSON schema, `tool_choice` to guarantee invocation · O37 `tool_choice` + sequencing dependent tools
+> **Objectives:**
+>
+> - O01 parallel tool calls
+> - O27 tool use + JSON schema, `tool_choice` to guarantee invocation
+> - O37 `tool_choice` + sequencing dependent tools
+>
+> **Lessons:**
+>
+> - Lesson 1 Tool-use loop, `tool_choice`, dependent tool sequencing
+> - Lesson 2 Parallel tool calls in one turn
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDK pinned: `@anthropic-ai/sdk` 0.135.0.
 
 ## The running example

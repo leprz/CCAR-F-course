@@ -26,7 +26,26 @@ By the end of this chapter you'll be able to look at a piece of guidance and say
 to configure a read-only multi-pass review, choose between plan mode and direct execution, write a CI invocation that
 is safe to run unattended, and get Claude to explore and test a codebase economically.
 
-> **Objectives:** O16 choose the config mechanism · O14 `context: fork` · O13 review configurations · O24 specialised review passes · O30 cutting false positives with persistent conventions · O08 plan mode vs direct vs multi-phase · O11 CLI in CI/CD · O32 choosing Grep/Glob/Read/Bash · O17 systematic exploration · O15 test-generation quality
+> **Objectives:**
+>
+> - O16 choose the config mechanism
+> - O14 `context: fork`
+> - O13 review configurations
+> - O24 specialised review passes
+> - O30 cutting false positives with persistent conventions
+> - O08 plan mode vs direct vs multi-phase
+> - O11 CLI in CI/CD
+> - O32 choosing Grep/Glob/Read/Bash
+> - O17 systematic exploration
+> - O15 test-generation quality
+>
+> **Lessons:**
+>
+> - Lesson 19 Choosing the configuration mechanism, and `context: fork`
+> - Lesson 20 Review configurations and specialised review passes
+> - Lesson 21 Plan mode vs direct execution vs multi-phase, and Claude Code in CI
+> - Lesson 22 Exploring a codebase, choosing built-in tools, generating good tests
+>
 > **Sources checked:** 2026-10-18 against code.claude.com/docs (links in *Going deeper*) and Claude Code 2.1.302 (`claude --help`).
 
 ## The running example

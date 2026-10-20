@@ -26,7 +26,19 @@ intermediate findings drive decomposition, design state that survives interrupti
 source-level uncertainty visible. Your two lowest-scoring objectives from the last attempt, durable state (O09) and
 uncertainty-preserving synthesis (O19), get two full sections each.
 
-> **Objectives:** O10 orchestration patterns · O07 dynamic decomposition · O09 state persistence for multi-agent pipelines · O19 synthesis that preserves uncertainty
+> **Objectives:**
+>
+> - O10 orchestration patterns
+> - O07 dynamic decomposition
+> - O09 state persistence for multi-agent pipelines
+> - O19 synthesis that preserves uncertainty
+>
+> **Lessons:**
+>
+> - Lesson 14 Orchestration patterns and dynamic decomposition
+> - Lesson 15 Pipeline state persistence and resumption
+> - Lesson 16 Synthesis that preserves uncertainty
+>
 > **Sources checked:** 2026-10-18 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
