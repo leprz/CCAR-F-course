@@ -39,7 +39,7 @@ document arrives as plain text after OCR, and they are deliberately unalike:
 | `INV-1` | Acme Office Supply invoice | US dates (`03/04/2026` = 4 March), `$1,245.50` |
 | `INV-2` | Müller Industrietechnik *Rechnung* | German dates (`04.03.2026` = 4 March), `1.234,56 €`, no PO (purchase order number), bank details printed |
 | `INV-3` | Acme credit note | The total is a credit: `-$189.00` |
-| `INV-4` | J. Barker & Sons, handwritten | `£340`, "5th march '26", a margin note in a different pen: *"PAID?? check w/ Tom"* |
+| `INV-4` | J. Barker & Sons, handwritten | `£340`, "5/3/26" (British: 5 March), a margin note in a different pen: *"PAID?? check w/ Tom"* |
 | `INV-5` | Brightline Consulting | `Date: 02/03/2026` (February 3 or March 2?), `Amount due: 1,500.00` with **no currency**, "Please pay within 15 days" |
 | `INV-6` | Cloudway Hosting *Master Services Agreement* | A contract, not an invoice: "GBP 2,000.00 per month" |
 | `INV-8` | Polish *Faktura VAT* | `2 460,00 zł` (space as thousands separator, comma as decimal) |
