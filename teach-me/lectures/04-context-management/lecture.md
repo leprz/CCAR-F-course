@@ -56,15 +56,24 @@ twice for his laptop. The first six messages settle everything that matters:
 Then the chat drifts. Ben asks a dozen padded questions about newsletter preferences, each answered at length. Finally
 he comes back to the point: *"So when exactly will I get my money back, and how much?"* To answer correctly, the agent
 needs `$899.99`, `RF-7731` and "5 business days" from turns 4–6, while thirty-odd turns of small talk sit in between.
-A small generator (`conversation.ts`) produces exactly this history, with the padding length as a parameter.
 
-**A code review that outgrows one session.** A review agent checks *Ledgerly*, a small order-and-billing service in
-`fixtures/codebase/`, against its `CONVENTIONS.md`. The service has about fifteen source files: routes
-(`src/routes/orders.ts`, `src/routes/invoices.ts`), services (`billingService.ts`, `orderService.ts`), repositories,
-`auth.ts`, `config.ts`, utilities and a frozen `src/legacy/` folder. The conventions say things like "all amounts are
-integer cents, rounded once", "SQL goes through `Db.query(sql, params)` with placeholders", and "every route that reads
-customer data must call `authorize` first". The codebase hides real issues, such as SQL built by string concatenation
-in `orderRepository.findByCustomer` and tax computed before the discount in `billingService.computeTotals`.
+**A code review that outgrows one session.** A review agent checks *Ledgerly*, a small order-and-billing service,
+against a conventions document. The service has about fifteen source files: routes (`src/routes/orders.ts`,
+`src/routes/invoices.ts`), services (`billingService.ts`, `orderService.ts`), repositories, `auth.ts`, `config.ts`,
+utilities and a frozen `src/legacy/` folder. The conventions say things like "all amounts are integer cents, rounded
+once", "SQL goes through `Db.query(sql, params)` with placeholders", and "every route that reads customer data must call
+`authorize` first". The codebase hides real issues. Here is one of them, in `src/repositories/orderRepository.ts`:
+
+```ts
+async findByCustomer(customerId: string, status?: string): Promise<Order[]> {
+  let sql = `SELECT * FROM orders WHERE customer_id = '${customerId}'`;
+  if (status) sql += ` AND status = '${status}'`;   // SQL built by string concatenation
+  const rows = await this.db.query<OrderRow>(sql);
+  return rows.map(toOrder);
+}
+```
+
+Another is in `src/services/billingService.ts`, where the invoice total computes tax before subtracting the discount.
 
 The first version of the agent reads every file into one growing conversation. On a larger codebase it runs out of
 context halfway through. When it's restarted the next day, after a developer has fixed two files, it starts again from
@@ -122,18 +131,20 @@ history is small talk, and the three facts the final question depends on sit nea
 has gone wrong yet; everything still fits. But every request now pays for all of it, and the model has to pick out
 `$899.99` and "5 business days" from a page of noise.
 
-A budget makes this concrete. A `manageContext` helper builds the full request, counts it, and only acts when the count
-is over budget:
+A budget makes this concrete. Before each turn, the agent assembles the exact request it is about to send, counts it,
+and only does something about it when the count is over budget:
 
 ```ts
-const plain = buildContext(state, '', history);
-if ((await countTokens(plain.system, plain.messages)) <= opts.budget) {
-  return { ...plain, state, compacted: false }; // fits: change nothing
+const request = { model, system, tools, messages: history };
+const { input_tokens } = await client.messages.countTokens(request);
+if (input_tokens <= BUDGET) {
+  return client.messages.create({ ...request, max_tokens: 1024 }); // fits: send it unchanged
 }
+// over budget: compact first (sections 2 and 3), count again, then send
 ```
 
-The counter is injected (`TokenCounter`). In production it wraps `client.messages.countTokens`; in the offline tests
-it's a deterministic characters-divided-by-four estimate, so tests don't need the network.
+The budget is your number, not the model's limit: something like 20k tokens for a support chat, well below the 1M
+window, chosen so the facts stay easy to find and each turn stays cheap.
 
 ### What goes wrong
 
@@ -181,7 +192,26 @@ the window.
 Where you cut matters as much as how much you keep. The API has structural rules about history (Part 1): a
 `tool_result` must directly follow the assistant turn that contains its `tool_use`, and the conversation must start with a
 user message. A cut in the wrong place breaks both. The safe rule is to cut only at a **human-turn boundary**: a user
-message that is real user input, not a message carrying tool results. One way to implement it:
+message that is real user input, not a message carrying tool results.
+
+The key idea is that the window counts **turns, not messages**. A turn starts when the person types something, and it
+runs until the person types again. Everything Claude does in between belongs to that turn: its replies, its tool
+calls, and the tool results. Here is a short version of Ben's chat with its one tool call, split into turns:
+
+| Index | Role | Content | Starts a turn? | Turn |
+|---|---|---|---|---|
+| 0 | user | "I was charged twice… ben.kowalski@example.com" | yes: typed text | A |
+| 1 | assistant | `tool_use` lookup_customer (id `tu_1`) | no: assistant | A |
+| 2 | user | `tool_result` for `tu_1`: cus_002 | no: only a tool result | A |
+| 3 | assistant | "I see order B2001, $899.99…" | no | A |
+| 4 | user | "Both charges were on 2026-08-22" | yes | B |
+| 5 | assistant | "Opened RF-7731, refund within 5 business days" | no | B |
+| 6 | user | "How do I change newsletter preferences?" | yes | C |
+| 7 | assistant | "Go to Account > Preferences…" | no | C |
+| 8 | user | "So when exactly will I get my money back?" | yes | D |
+
+Message 2 has `role: 'user'`, but nobody typed it: it's your code handing a tool result back to Claude, so it belongs
+to turn A. One way to implement the window:
 
 ```ts
 /** A human turn starts with a user message that is not just tool results. */
@@ -191,16 +221,31 @@ function isHumanTurn(message: MessageParam): boolean {
   return !message.content.some((b) => b.type === 'tool_result');
 }
 
+/**
+ * Keep the last `keepTurns` turns verbatim and return everything before them as `older`.
+ * Counts turns, not messages: a turn starts when the person types something and runs until they type again,
+ * so Claude's replies, tool calls and tool results stay in the turn they belong to.
+ */
 export function slidingWindow(messages: MessageParam[], keepTurns: number) {
-  const starts = messages.flatMap((m, i) => (isHumanTurn(m) ? [i] : []));
-  if (starts.length <= keepTurns) return { older: [], recent: messages };
-  const cut = starts[starts.length - keepTurns]!;
+  const turnStartIndexes = messages.flatMap((m, i) => (isHumanTurn(m) ? [i] : []));
+  if (turnStartIndexes.length <= keepTurns) return { older: [], recent: messages };
+  const cut = turnStartIndexes[turnStartIndexes.length - keepTurns]!;
   return { older: messages.slice(0, cut), recent: messages.slice(cut) };
 }
 ```
 
+For the table above, `turnStartIndexes` is `[0, 4, 6, 8]`, and the cut moves back one turn at a time as `keepTurns` grows:
+
+| `keepTurns` | `recent` (kept verbatim) | `older` (summarized) |
+|---|---|---|
+| 1 | message 8 (turn D) | 0–7 |
+| 2 | messages 6–8 (turns C, D) | 0–5 |
+| 3 | messages 4–8 (turns B, C, D) | 0–3, with `tool_use` 1 and `tool_result` 2 together |
+| 4 or more | all 9 messages | nothing |
+
 Because `cut` is always the index of a human turn, `recent` always starts with a user message, and a `tool_use` and its
-`tool_result` always end up on the same side of the cut.
+`tool_result` always end up on the same side of the cut. Compare `messages.slice(-7)`: it keeps messages 2–8, so the
+history starts with the `tool_result` for `tu_1` after its `tool_use` was dropped, and the request fails with a 400.
 
 The summary itself needs instructions, and the most important one is about exact values. A summarizer prompt that does this:
 
@@ -310,10 +355,27 @@ export function mergeState(state: CaseState, extracted: CaseState): CaseState {
 ```
 
 How do the facts get extracted from the older turns in the first place? With the technique from Part 1: a tool whose
-schema is the state shape, forced with `tool_choice`, so the result is parsed JSON rather than prose. A
-`record_case_facts` tool that tells the model to "copy values exactly as written; never round or paraphrase" does the job. (On models that
-reject forced `tool_choice`, such as Opus and Sonnet 5.5, use structured outputs or `strict` + `auto` for the same
-guarantee; see Parts 1 and 2.)
+schema is the state shape, forced with `tool_choice`, so the result is parsed JSON rather than prose. The tool's
+description carries the most important instruction:
+
+```ts
+const response = await client.messages.create({
+  model,
+  max_tokens: 1024,
+  tools: [{
+    name: 'record_case_facts',
+    description: 'Record the facts that must never be lost: identifiers, exact amounts and dates, and every promise ' +
+      'made to the customer. Copy values exactly as written; never round or paraphrase.',
+    input_schema: { /* the CaseState shape above, all five fields required */ },
+  }],
+  tool_choice: { type: 'tool', name: 'record_case_facts' },
+  messages: [{ role: 'user', content: `<conversation>\n${olderTurnsAsText}\n</conversation>` }],
+});
+const extracted = response.content.find((b) => b.type === 'tool_use')!.input as CaseState;
+```
+
+(On models that reject forced `tool_choice`, such as Opus and Sonnet 5.5, use structured outputs or `strict` + `auto`
+for the same guarantee; see Parts 1 and 2.)
 
 Where the pieces go in the request matters too. Stable facts belong at the top, the live question at the end:
 
@@ -325,7 +387,8 @@ flowchart TB
 
 ### Worked example: the compacted request for Ben
 
-When `manageContext` compacts, it runs both extractions on `older`, merges the state, and builds the request:
+When Ben's chat goes over budget, the agent makes two calls on the `older` slice: one for the summary (section 2) and
+one for the facts (above). It merges the extracted facts into the state it already had and builds the request:
 
 ```text
 system:
@@ -346,7 +409,7 @@ messages: [ summary + recent turns, as in section 2 ]
 
 Now the answer to "when and how much?" doesn't depend on the summary's wording at all: `$899.99` and the 5-day promise
 are in the system prompt, verbatim, on every request. The summary carries the narrative (what Ben asked, what was
-explained); the state carries the facts. After compacting, `manageContext` counts again and throws if the compacted
+explained); the state carries the facts. After compacting, the agent counts again and raises an error if the compacted
 request is still over budget, rather than sending something that silently doesn't fit.
 
 ### What goes wrong
@@ -420,11 +483,17 @@ as you go (a `review.json`, a `progress.md`), so the next session, a teammate or
 file for **fast recovery**: structured, current and small. The Ledgerly review's scratchpad:
 
 ```ts
-export interface Scratchpad {
+interface Finding {
+  file: string;                                       // "src/repositories/orderRepository.ts"
+  category: 'security' | 'business-logic' | 'api-design';
+  summary: string;                                    // one sentence naming the function and the problem
+}
+
+interface Scratchpad {
   version: 1;
   updatedAt: string;
-  fileHashes: Record<string, string>; // what each file looked like when it was analyzed
-  findings: Finding[];               // { file, category, summary }
+  fileHashes: Record<string, string>; // path -> SHA-256 of the content when it was analyzed
+  findings: Finding[];
 }
 ```
 
@@ -444,23 +513,34 @@ the start of every session. Apart from that, sessions are independent; each star
 
 ### Worked example: reviewing Ledgerly file by file
 
-An `analyzeFile` function is the isolated unit of work. Each call is a **separate request** containing one file, the
-conventions, and nothing else:
+The isolated unit of work is "review one file". Each review is a **separate request** containing one file, the
+conventions, and nothing else. A forced `report_findings` tool makes the answer a short structured list instead of an
+essay:
 
 ```ts
-const response = await client.messages.create({
-  model,
-  max_tokens: 2048,
-  system: `You review one file of a TypeScript service against the project conventions.\n\n<conventions>\n${conventions}\n</conventions>`,
-  tools: [REPORT_TOOL],
-  tool_choice: { type: 'tool', name: REPORT_TOOL.name },
-  messages: [{ role: 'user', content: `<file path="${file}">\n${content}\n</file>` }],
-});
+async function reviewOneFile(path: string, source: string, conventions: string): Promise<Finding[]> {
+  const response = await client.messages.create({
+    model,
+    max_tokens: 2048,
+    system: `You review one file of a TypeScript service against the project conventions.\n\n<conventions>\n${conventions}\n</conventions>`,
+    tools: [{
+      name: 'report_findings',
+      description: 'Report every issue found in the file under review. Use an empty list when the file is clean.',
+      input_schema: { /* { findings: [{ category, summary }] } */ },
+    }],
+    tool_choice: { type: 'tool', name: 'report_findings' },
+    messages: [{ role: 'user', content: `<file path="${path}">\n${source}\n</file>` }],
+  });
+  const call = response.content.find((b) => b.type === 'tool_use')!;
+  const { findings } = call.input as { findings: Omit<Finding, 'file'>[] };
+  return findings.map((f) => ({ file: path, ...f }));
+}
 ```
 
-For `src/repositories/orderRepository.ts`, the forced `report_findings` call returns something like
+For `src/repositories/orderRepository.ts` (the `findByCustomer` code from the running example), the call returns
+something like
 `[{ category: "security", summary: "findByCustomer builds SQL by concatenating the status query parameter" }]`. The
-caller never sees the file's source; it only collects findings. All fifteen files can be analyzed concurrently, each in
+caller never sees the file's source; it only collects findings. All fifteen files can be reviewed concurrently, each in
 its own small context, and the coordinator ends up holding a list of short findings instead of fifteen files of code.
 Those findings and the file hashes go into the scratchpad, atomically.
 
@@ -511,9 +591,12 @@ the SDK `resume` plus `forkSession: true`, to branch into a new session id and l
 example to try an alternative approach without polluting the main line.
 
 ```ts
-export function agentSdkResumeOptions(sessionId: string, opts: { fork?: boolean } = {}) {
-  return opts.fork ? { resume: sessionId, forkSession: true } : { resume: sessionId };
-}
+import { query } from '@anthropic-ai/claude-agent-sdk';
+
+// continue yesterday's session, same id
+query({ prompt: 'Continue the review.', options: { resume: sessionId } });
+// branch from it: a new session id starts from a copy, the original is untouched
+query({ prompt: 'Try the other approach.', options: { resume: sessionId, forkSession: true } });
 ```
 
 Resuming is right when the gap is short, nothing has changed, and the exact transcript is valuable. Its risks are that
@@ -535,20 +618,41 @@ The second approach rests on **targeted re-analysis**:
 6. **Inject** a briefing: what was re-analyzed, what was removed, and the current findings, marked "already verified, do
    not re-report".
 
+Steps 1 to 5 are plain bookkeeping, no model involved. Given yesterday's scratchpad and today's files (path to
+content), the plan sorts every file and every old finding into one of four buckets:
+
 ```ts
-export function planResume(pad: Scratchpad | null, files: Files): ResumePlan {
-  const curr = snapshot(files);
-  if (!pad) return { toAnalyze: Object.keys(curr).sort(), carried: [], reverify: [], removed: [] };
-  const diff = diffSnapshots(pad.fileHashes, curr);
-  const unchanged = new Set(diff.unchanged);
-  const changed = new Set(diff.changed);
+import { createHash } from 'node:crypto';
+
+const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
+
+function planResume(pad: Scratchpad | null, files: Record<string, string>) {
+  const now = Object.fromEntries(Object.entries(files).map(([path, src]) => [path, sha256(src)]));
+  const before = pad?.fileHashes ?? {};
+  const changed = Object.keys(now).filter((p) => p in before && before[p] !== now[p]);
+  const added = Object.keys(now).filter((p) => !(p in before));
+  const removed = Object.keys(before).filter((p) => !(p in now));
+  const findings = pad?.findings ?? [];
   return {
-    toAnalyze: [...diff.changed, ...diff.added].sort(),
-    carried: pad.findings.filter((f) => unchanged.has(f.file)),
-    reverify: pad.findings.filter((f) => changed.has(f.file)),
-    removed: diff.removed,
+    toAnalyze: [...changed, ...added].sort(),                                         // step 2
+    carried: findings.filter((f) => f.file in now && before[f.file] === now[f.file]), // step 3
+    reverify: findings.filter((f) => changed.includes(f.file)),                       // step 4
+    removed,                                                                          // step 5
   };
 }
+```
+
+With no scratchpad at all (the first run), every file counts as added, so everything is analyzed.
+
+Step 4 needs one change to the per-file review from section 4: when a changed file had findings, they're appended to
+the user message so the model can confirm or drop them:
+
+```text
+<file path="src/repositories/orderRepository.ts"> ...today's source... </file>
+<previous_findings note="from an earlier version of this file; keep the ones that still apply, drop fixed ones">
+- [security] findByCustomer builds SQL by concatenating the status query parameter
+- [business-logic] list computes offset = page * size with 1-based pages ...
+</previous_findings>
 ```
 
 ### Worked example: day two of the Ledgerly review
@@ -557,19 +661,19 @@ Yesterday's scratchpad holds fifteen file hashes and, among others, findings on 
 injection and the pagination off-by-one), on `billingService.ts` (tax before discount, per-line rounding) and on
 `routes/orders.ts`.
 
-Today `planResume` hashes the files again. Two hashes differ: `orderRepository.ts` and `billingService.ts`. Nothing was
+Today the resume hashes the files again. Two hashes differ: `orderRepository.ts` and `billingService.ts`. Nothing was
 added or removed. The plan:
 
 | Bucket | Files / findings |
 |--------|------------------|
 | `toAnalyze` | `src/repositories/orderRepository.ts`, `src/services/billingService.ts` |
-| `reverify` | the four old findings on those two files, passed to `analyzeFile` as `previous_findings` |
+| `reverify` | the four old findings on those two files, sent along as `<previous_findings>` |
 | `carried` | everything on the other thirteen files, including the `routes/orders.ts` findings |
 | `removed` | none |
 
-`resumeReview` makes **two** isolated analysis calls instead of fifteen. The analyzer for `orderRepository.ts` sees the
-fixed code and the old SQL-injection finding, drops it, and keeps the pagination bug if it's still there. The new
-scratchpad combines the carried findings with the fresh ones and is saved atomically.
+The resume makes **two** isolated review calls instead of fifteen. The review of `orderRepository.ts` sees the fixed
+code and the old SQL-injection finding, drops it, and keeps the pagination bug if it's still there. The new scratchpad
+combines the carried findings with the fresh ones and today's hashes, and is saved atomically.
 
 The main session then gets a briefing, not a transcript:
 
@@ -617,31 +721,31 @@ the analyzer to re-verify catches both outcomes: fixed issues disappear, survivi
 
 Here are both running examples one last time, with every idea from this chapter in place.
 
-**Ben's chat.** On every turn, `manageContext` builds the request with the current `CaseState` in the system
-prompt and counts it with the token counting API (section 1). While it fits, nothing changes. When Ben's final question
-pushes it over budget:
+**Ben's chat.** On every turn, the agent builds the request with the current case state in the system prompt and
+counts it with the token counting API (section 1). While it fits, nothing changes. When Ben's final question pushes it
+over budget:
 
-1. `slidingWindow` keeps the last two human turns verbatim and returns the rest as `older`, cutting only at human-turn
-   boundaries so no `tool_use` loses its `tool_result` (section 2).
-2. `extractFacts` runs a forced `record_case_facts` call on `older` and gets
+1. **Split.** The sliding window keeps the last two human turns verbatim and sets the rest aside as `older`, cutting
+   only at a human-turn boundary so no `tool_use` loses its `tool_result` (section 2).
+2. **Extract facts.** A forced `record_case_facts` call on `older` returns
    `{ customer_id: "cus_002", order_ids: ["B2001"], facts: { refund_amount: "$899.99", ... }, commitments: ["... within 5 business days"] }`.
-   `mergeState` folds it into the existing state: ids and promises accumulate, newer facts win, open issues are replaced
+   It's merged into the existing state: ids and promises accumulate, newer facts win, open issues are replaced
    (section 3).
-3. `summarize` turns `older` into a short narrative with exact values preserved (section 2).
-4. `buildContext` puts the state in the system prompt and prepends the summary to the first kept user message, so roles
-   still alternate (sections 2–3).
-5. The compacted request is counted again; if it's still over budget, the function throws instead of sending it.
+3. **Summarize.** A second call turns `older` into a short narrative with exact values preserved (section 2).
+4. **Assemble.** The state goes into the system prompt; the summary is prepended to the first kept user message, so
+   roles still alternate (sections 2–3).
+5. **Re-count.** If the compacted request is still over budget, the agent raises an error instead of sending it.
 
 Claude answers with "$899.99", refund case RF-7731 and "within 5 business days", because those values are in the
 system prompt verbatim, not because the summary happened to keep them.
 
-**The Ledgerly review.** Day one: `planResume` finds no scratchpad, so every file goes to `toAnalyze`. Each file is
-reviewed in its own isolated request with the conventions and a forced `report_findings` tool (section 4). Findings and
-content hashes are saved atomically. Day two: hashes show two changed files; only those are re-analyzed, with their old
-findings passed in to re-verify; the other findings are carried; the new scratchpad is saved; and the main session
-receives a `review_state` briefing instead of the old transcript (section 5). In the Agent SDK, the same decision
-appears as `resume` (continue the stored session) versus a fresh `query()` seeded with the briefing, and `forkSession`
-when you want a branch.
+**The Ledgerly review.** Day one: there's no scratchpad, so every file is analyzed. Each file is reviewed in its own
+isolated request with the conventions and a forced `report_findings` tool (section 4). Findings and content hashes are
+saved atomically. Day two: hashes show two changed files; only those are re-analyzed, with their old findings passed in
+to re-verify; the other findings are carried over; the new scratchpad is saved; and the main session receives a
+`review_state` briefing instead of the old transcript (section 5). In the Agent SDK, the same decision appears as
+`resume` (continue the stored session) versus a fresh `query()` seeded with the briefing, and `forkSession` when you
+want a branch.
 
 ## Summary
 
