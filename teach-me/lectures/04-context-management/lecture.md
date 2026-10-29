@@ -35,7 +35,7 @@ and scratchpad files, and resume a multi-session task without redoing finished w
 > - Lesson 9 Context window optimization
 > - Lesson 10 Cross-session context: scratchpads, isolation, resumption
 >
-> **Sources checked:** 2026-10-18 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
+> **Sources checked:** 2026-10-25 (links in *Going deeper*). SDKs pinned: `@anthropic-ai/sdk` 0.135.0, `@anthropic-ai/claude-agent-sdk` 0.3.302.
 
 ## The running example
 
@@ -423,18 +423,113 @@ an hour ago. Transient fields are replaced, not accumulated.
 ### Beyond your own code: what the platform does for you
 
 You don't always have to write compaction yourself. Know that these exist; the exam may describe them generically.
+All three API features below are betas: call `client.beta.messages.create` and name the beta in `betas`. The
+`messages` in the examples are Ben's chat.
 
-- **Server-side compaction** (beta `compact-2026-09-04`, top-level `compaction` parameter): the API writes the summary,
-  either **on demand** or automatically **at a token threshold**, and a compaction block replaces the older turns.
-- **Context editing** (beta `context-management-2025-06-27`, `context_management.edits`): `clear_tool_uses_20250919`
-  clears old tool results (options `trigger`, `keep`, `clear_at_least`, `exclude_tools`, `clear_tool_inputs`), and
-  `clear_thinking_20251015` handles old thinking blocks. Applied edits are reported in
-  `context_management.applied_edits`. Clearing invalidates the prompt cache from that point, so set `clear_at_least` to
-  make each clear worth it. Pair it with the **memory tool**, so Claude can save facts before their tool results are
-  cleared.
-- **Claude Code** auto-compacts long sessions: it clears old tool outputs first, then summarizes. You can steer it with
-  `/compact focus on …` or a "Compact Instructions" section in CLAUDE.md. Put rules that must persist in **CLAUDE.md**,
-  because instructions given early in a chat can get lost in compaction.
+**Compaction on demand** (beta `compact-2026-09-04`, top-level `compaction` parameter). You decide when. Send the
+conversation as it stands, with the same `system` and `tools` as your normal turns, plus `compaction`. Claude writes a
+summary instead of a reply:
+
+```ts
+const summary = await client.beta.messages.create({
+  betas: ['compact-2026-09-04'],
+  model,
+  max_tokens: 4096,                 // caps the summary, and any thinking before it
+  system,
+  tools,
+  messages: history,
+  compaction: {
+    type: 'summarize',
+    // optional: replaces the default summarization prompt entirely (max 16,384 characters)
+    instructions: 'Preserve exactly: ids, amounts, dates and every promise made to the customer. Do not call tools.',
+  },
+});
+// summary.stop_reason === 'compaction'
+// summary.content    === [{ type: 'compaction', content: 'Summary of the conversation: ...', signature: '...' }]
+```
+
+The returned block **replaces** the messages it summarizes. Put it first in `messages` on every later request (still
+with the beta header), unchanged, signature included, and add new turns after it:
+
+```ts
+history = [{ role: 'assistant', content: summary.content }];
+history.push({ role: 'user', content: 'So when exactly will I get my money back?' });
+```
+
+Check `stop_reason` before you use the result. Anything other than `"compaction"` (for example `"max_tokens"`, meaning
+the summary was cut off) comes back with empty `content`. In that case keep the history and try again later.
+
+**Compaction at a token threshold** (a different beta, `compact-2026-01-12`, an entry in `context_management.edits`).
+The API decides: when a normal request's input passes `trigger`, it summarizes first and then answers.
+
+```ts
+const response = await client.beta.messages.create({
+  betas: ['compact-2026-01-12'],
+  model,
+  max_tokens: 1024,
+  messages: history,
+  context_management: {
+    edits: [{
+      type: 'compact_20260112',
+      trigger: { type: 'input_tokens', value: 150_000 }, // the default; minimum 50,000
+      pause_after_compaction: false,                     // true: return only the block, stop_reason 'compaction'
+      instructions: 'Preserve exact amounts and promises.', // optional, replaces the default prompt
+    }],
+  },
+});
+history.push({ role: 'assistant', content: response.content }); // append as usual; the API drops what's before the block
+```
+
+Unlike on-demand compaction, you don't swap anything: the compaction block arrives at the start of the reply, you append
+the reply as usual, and the API ignores everything before the block on later requests. Recent turns can't be kept word
+for word unless you pause after compaction and re-insert them yourself.
+
+**Context editing** (beta `context-management-2025-06-27`, `context_management.edits`). It doesn't summarize anything.
+It **clears** old tool results or old thinking by rule, server side, before the model reads the request. Your `history`
+stays unchanged:
+
+```ts
+const response = await client.beta.messages.create({
+  betas: ['context-management-2025-06-27'],
+  model,
+  max_tokens: 1024,
+  tools,
+  messages: history,
+  context_management: {
+    edits: [
+      // if you use both, the thinking edit must come first
+      { type: 'clear_thinking_20251015', keep: { type: 'thinking_turns', value: 2 } }, // or keep: 'all'
+      {
+        type: 'clear_tool_uses_20250919',
+        trigger: { type: 'input_tokens', value: 30_000 },      // when to start clearing (default 100,000)
+        keep: { type: 'tool_uses', value: 3 },                 // most recent tool results left intact (default 3)
+        clear_at_least: { type: 'input_tokens', value: 5_000 }, // skip the edit unless it frees at least this many
+        exclude_tools: ['lookup_customer'],                    // never clear results from these tools
+        clear_tool_inputs: false,                              // true: also clear the tool_use inputs
+      },
+    ],
+  },
+});
+// response.context_management.applied_edits, for example:
+// [{ type: 'clear_tool_uses_20250919', cleared_tool_uses: 8, cleared_input_tokens: 50000 }]
+```
+
+Two practical points:
+- **Prompt caching.** Clearing tool results changes the prompt, so the cache is invalidated from the cleared point
+  on. That's why `clear_at_least` exists: a clear that frees only a few hundred tokens costs a cache rewrite and
+  saves almost nothing.
+- **Memory tool.** Pair clearing with the memory tool, so Claude is warned before results are cleared and can save
+  the facts it still needs:
+
+```ts
+tools: [...tools, { type: 'memory_20250818', name: 'memory' }],
+```
+
+You can't send `compaction` and `context_management` on the same request.
+
+**Claude Code** auto-compacts long sessions: it clears old tool outputs first, then summarizes. You can steer it with
+`/compact focus on …` or a "Compact Instructions" section in CLAUDE.md. Put rules that must persist in **CLAUDE.md**,
+because instructions given early in a chat can get lost in compaction.
 
 The principle is the same in every case: bulky, already-digested material (old tool output) goes first, and anything
 that must survive exactly is kept somewhere compaction can't rewrite it.
@@ -796,6 +891,7 @@ You've seen every piece of this chapter's running example. Now build it yourself
 
 - [Context windows](https://platform.claude.com/docs/en/build-with-claude/context-windows): what counts toward the window, sizes per model, overflow behaviour, context awareness.
 - [Compaction overview](https://platform.claude.com/docs/en/build-with-claude/compaction): server-side compaction, on demand versus threshold, versus writing your own summarizer.
+- [Compaction on demand](https://platform.claude.com/docs/en/build-with-claude/compaction-on-demand) and [Compaction at a token threshold](https://platform.claude.com/docs/en/build-with-claude/compaction-threshold): the `compaction` parameter and the `compact_20260112` edit, field by field.
 - [Context editing](https://platform.claude.com/docs/en/build-with-claude/context-editing): clearing old tool results and thinking blocks, and the interaction with prompt caching.
 - [Token counting](https://platform.claude.com/docs/en/build-with-claude/token-counting): the `countTokens` endpoint, its limits and estimates.
 - [Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents): context rot, curation, compaction, structured note-taking and sub-agent architectures.
