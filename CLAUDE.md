@@ -22,6 +22,8 @@ npm run test:live -- lessons/01           # real API; needs ANTHROPIC_API_KEY in
 npm run typecheck                         # tsc --noEmit, strict; type-checks starters AND solutions
 npm run gate [-- 01 02]                   # quality gate: starter must fail, solution must pass
                                           # (the learner edits starters in place: a solved lesson reports "starter passes"; that's expected, not a bug)
+npm run deploy                            # build dist/ccar-f-course/ and deploy the portal to teach-me.leprz.com/ccar-f-course
+                                          # (Worker route in wrangler.jsonc; needs `npx wrangler login` once)
 ```
 
 Quiz portal: invoke the project skill `/teach-me` (vendored in `.claude/skills/teach-me/`, always uses the `./teach-me/` root),

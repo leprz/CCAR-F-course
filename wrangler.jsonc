@@ -1,0 +1,13 @@
+// Static-assets-only Worker serving the teach-me portal at
+// teach-me.leprz.com/ccar-f-course. Build dist/ first: npm run deploy does both.
+// The route needs a proxied DNS record for teach-me.leprz.com.
+{
+  "name": "ccar-f-teach-me",
+  "compatibility_date": "2026-10-29",
+  "assets": {
+    "directory": "./dist"
+  },
+  "routes": [
+    { "pattern": "teach-me.leprz.com/ccar-f-course*", "zone_name": "leprz.com" }
+  ]
+}

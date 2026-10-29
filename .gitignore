@@ -3,3 +3,5 @@ node_modules/
 progress.json
 *.log
 .DS_Store
+dist/
+.wrangler/

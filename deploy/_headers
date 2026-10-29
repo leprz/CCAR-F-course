@@ -1,0 +1,12 @@
+# Content changes without a version stamp, so always revalidate it.
+# JS and CSS are loaded with ?v=<VERSION> and can use the default caching.
+/ccar-f-course/*.html
+  Cache-Control: no-cache
+/ccar-f-course/*.json
+  Cache-Control: no-cache
+/ccar-f-course/lectures/*
+  Cache-Control: no-cache
+/ccar-f-course/fixtures/*
+  Cache-Control: no-cache
+/ccar-f-course/
+  Cache-Control: no-cache

@@ -12,13 +12,16 @@
     "test:solution": "SOLUTION=1 vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "typecheck": "tsc --noEmit",
-    "gate": "tsx scripts/gate.ts"
+    "gate": "tsx scripts/gate.ts",
+    "build:site": "bash scripts/build-site.sh",
+    "deploy": "bash scripts/build-site.sh && wrangler deploy"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "wrangler": "4.155.0"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.302",
