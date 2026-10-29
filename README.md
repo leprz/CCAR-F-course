@@ -2,12 +2,14 @@
 
 A study kit for the **Claude Certified Architect – Foundations** exam. It pairs a lecture for each topic with hands-on
 TypeScript lessons and exam-style quizzes. Everything maps to the exam's 37 objectives (O01–O37), so you can see which
-ones you've practised and how you scored on them.
+ones you've practised.
+
+**Live portal:** [teach-me.leprz.com/ccar-f-course](https://teach-me.leprz.com/ccar-f-course/): read the lectures and take
+the quizzes and mock exam in the browser, no setup needed.
 
 - **8 lectures**: one book-style chapter per part, built from the current official docs.
 - **22 lessons**: small TypeScript tasks with numbered `TODO(n)` bugs and tests that check your fix.
-- **Quizzes and a mock exam** in a local web portal, with results broken down by objective and an *estimated* score
-  out of 720.
+- **Quizzes and a mock exam** in a web portal, with results broken down by objective.
 
 ## Setup
 
@@ -36,6 +38,8 @@ For each part, in order:
    objective, and *Export progress* downloads your latest result per objective as `progress.json`.
 
 ### The study portal
+
+The portal is deployed at <https://teach-me.leprz.com/ccar-f-course/>. To run it locally instead:
 
 ```bash
 bash .claude/skills/teach-me/scripts/serve.sh teach-me    # prints the port, e.g. 8765
