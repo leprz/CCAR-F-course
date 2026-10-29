@@ -1,0 +1,3 @@
+# Root of teach-me.leprz.com: send visitors to the course. 302, not 301, so the
+# root can point somewhere else later without browsers holding on to it.
+/ /ccar-f-course/ 302

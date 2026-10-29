@@ -15,5 +15,5 @@ rm -rf dist
 mkdir -p "dist/$PREFIX"
 rsync -a --exclude '.server.*' --exclude '.gitignore' --exclude '/fixtures' teach-me/ "dist/$PREFIX/"
 cp -R fixtures "dist/$PREFIX/fixtures"
-cp deploy/_headers dist/_headers
+cp deploy/_headers deploy/_redirects dist/
 echo "built dist/$PREFIX ($(find dist -type f | wc -l | tr -d ' ') files)"

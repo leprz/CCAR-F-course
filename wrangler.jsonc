@@ -1,6 +1,7 @@
 // Static-assets-only Worker serving the teach-me portal at
 // teach-me.leprz.com/ccar-f-course. Build dist/ first: npm run deploy does both.
-// The route needs a proxied DNS record for teach-me.leprz.com.
+// The routes need a proxied DNS record for teach-me.leprz.com. The bare root
+// route only serves the redirect in deploy/_redirects.
 {
   "name": "ccar-f-teach-me",
   "compatibility_date": "2026-10-29",
@@ -8,6 +9,7 @@
     "directory": "./dist"
   },
   "routes": [
-    { "pattern": "teach-me.leprz.com/ccar-f-course*", "zone_name": "leprz.com" }
+    { "pattern": "teach-me.leprz.com/ccar-f-course*", "zone_name": "leprz.com" },
+    { "pattern": "teach-me.leprz.com/", "zone_name": "leprz.com" }
   ]
 }
